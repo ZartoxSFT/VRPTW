@@ -24,11 +24,13 @@ public class SimulatedAnnealingSolver {
 
         double temp = initialTemp;
         List<Double> history = new ArrayList<>(iterations);
+        int solutionsEvaluated = 1; // Initial solution
 
         for (int i = 0; i < iterations; i++) {
             HeuristicUtils.Neighbor neighbor = HeuristicUtils.randomNeighbor(current, random);
             Solution candidate = neighbor.solution;
             Evaluator.Eval candidateEval = evaluator.evaluate(candidate);
+            solutionsEvaluated++;
 
             double delta = candidateEval.objective - currentEval.objective;
             if (delta < 0 || random.nextDouble() < Math.exp(-delta / Math.max(temp, 1e-9))) {
@@ -49,6 +51,6 @@ public class SimulatedAnnealingSolver {
         }
 
         long dt = System.currentTimeMillis() - t0;
-        return new SearchResult("sa", best, bestEval, history, dt);
+        return new SearchResult("sa", best, bestEval, history, dt, solutionsEvaluated);
     }
 }

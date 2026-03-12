@@ -23,10 +23,16 @@ public class Evaluator {
 
     private final VrpInstance instance;
     private final double penaltyWeight;
+    private final boolean enforceTimeWindows;
 
     public Evaluator(VrpInstance instance, double penaltyWeight) {
+        this(instance, penaltyWeight, true);
+    }
+
+    public Evaluator(VrpInstance instance, double penaltyWeight, boolean enforceTimeWindows) {
         this.instance = instance;
         this.penaltyWeight = penaltyWeight;
+        this.enforceTimeWindows = enforceTimeWindows;
     }
 
     public Eval evaluate(Solution s) {
@@ -41,7 +47,8 @@ public class Evaluator {
             totalCapacityViolation += re.capacityViolation;
         }
 
-        double objective = totalDistance + penaltyWeight * (totalTimeViolation + totalCapacityViolation);
+        double timeComponent = enforceTimeWindows ? totalTimeViolation : 0.0;
+        double objective = totalDistance + penaltyWeight * (timeComponent + totalCapacityViolation);
         return new Eval(totalDistance, totalTimeViolation, totalCapacityViolation, objective);
     }
 
@@ -92,7 +99,11 @@ public class Evaluator {
 
     public boolean routeFeasible(List<Integer> route) {
         RouteEval re = evaluateRoute(route);
-        return re.timeViolation < 1e-9 && re.capacityViolation < 1e-9;
+        if (enforceTimeWindows) {
+            return re.timeViolation < 1e-9 && re.capacityViolation < 1e-9;
+        } else {
+            return re.capacityViolation < 1e-9;
+        }
     }
 
     public static class RouteEval {

@@ -29,6 +29,7 @@ public class TabuSearchSolver {
         Deque<String> tabuQueue = new ArrayDeque<>();
         Set<String> tabuSet = new HashSet<>();
         List<Double> history = new ArrayList<>(iterations);
+        int solutionsEvaluated = 1; // Initial solution
 
         for (int i = 0; i < iterations; i++) {
             Solution bestCandidate = null;
@@ -38,6 +39,7 @@ public class TabuSearchSolver {
             for (int k = 0; k < neighborhoodSize; k++) {
                 HeuristicUtils.Neighbor n = HeuristicUtils.randomNeighbor(current, random);
                 Evaluator.Eval ev = evaluator.evaluate(n.solution);
+                solutionsEvaluated++;
                 boolean isTabu = tabuSet.contains(n.moveKey);
                 boolean aspiration = ev.objective < bestEval.objective;
                 if (isTabu && !aspiration) {
@@ -55,6 +57,7 @@ public class TabuSearchSolver {
                 HeuristicUtils.Neighbor fallback = HeuristicUtils.randomNeighbor(current, random);
                 bestCandidate = fallback.solution;
                 bestCandidateEval = evaluator.evaluate(bestCandidate);
+                solutionsEvaluated++;
                 bestMove = fallback.moveKey;
             }
 
@@ -79,6 +82,6 @@ public class TabuSearchSolver {
         }
 
         long dt = System.currentTimeMillis() - t0;
-        return new SearchResult("tabu", best, bestEval, history, dt);
+        return new SearchResult("tabu", best, bestEval, history, dt, solutionsEvaluated);
     }
 }

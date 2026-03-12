@@ -49,4 +49,44 @@ public class VrpInstance {
     public double distClientToClient(int fromClientId, int toClientId) {
         return distance[fromClientId][toClientId];
     }
+
+    /**
+     * Calcule une borne inférieure du nombre de véhicules nécessaires
+     * basée uniquement sur la capacité (sans considérer les fenêtres temporelles).
+     */
+    public int minVehiclesCapacityBound() {
+        int totalDemand = 0;
+        for (Node client : clients) {
+            totalDemand += client.demand;
+        }
+        return (int) Math.ceil((double) totalDemand / capacity);
+    }
+
+    /**
+     * Affiche des statistiques sur l'instance pour aider à comprendre
+     * les contraintes (utile pour documenter les instances dans le rapport).
+     */
+    public String getStatistics() {
+        int totalDemand = 0;
+        int minReady = Integer.MAX_VALUE;
+        int maxDue = Integer.MIN_VALUE;
+        for (Node client : clients) {
+            totalDemand += client.demand;
+            minReady = Math.min(minReady, client.readyTime);
+            maxDue = Math.max(maxDue, client.dueTime);
+        }
+
+        int minVehicles = minVehiclesCapacityBound();
+
+        return String.format(
+                "Instance: %s\n" +
+                        "  Clients: %d\n" +
+                        "  Capacité véhicule: %d\n" +
+                        "  Demande totale: %d\n" +
+                        "  Min véhicules (capacité): %d\n" +
+                        "  Fenêtre dépôt: [%d, %d]\n" +
+                        "  Fenêtres clients: [%d, %d]",
+                name, clients.size(), capacity, totalDemand, minVehicles,
+                depot.readyTime, depot.dueTime, minReady, maxDue);
+    }
 }

@@ -1,7 +1,9 @@
 package vrptw;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class SimulatedAnnealingSolver {
@@ -25,9 +27,14 @@ public class SimulatedAnnealingSolver {
         double temp = initialTemp;
         List<Double> history = new ArrayList<>(iterations);
         int solutionsEvaluated = 1; // Initial solution
+        Map<String, Integer> neighborhoodGeneratedCounts = new LinkedHashMap<>();
+        neighborhoodGeneratedCounts.put("relocate", 0);
+        neighborhoodGeneratedCounts.put("swap", 0);
+        neighborhoodGeneratedCounts.put("noop", 0);
 
         for (int i = 0; i < iterations; i++) {
             HeuristicUtils.Neighbor neighbor = HeuristicUtils.randomNeighbor(current, random);
+            incrementMoveCount(neighborhoodGeneratedCounts, neighbor.moveKey);
             Solution candidate = neighbor.solution;
             Evaluator.Eval candidateEval = evaluator.evaluate(candidate);
             solutionsEvaluated++;
@@ -51,6 +58,31 @@ public class SimulatedAnnealingSolver {
         }
 
         long dt = System.currentTimeMillis() - t0;
-        return new SearchResult("sa", best, bestEval, history, dt, solutionsEvaluated);
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("iterations", String.valueOf(iterations));
+        params.put("seed", String.valueOf(seed));
+        params.put("initialTemp", String.valueOf(initialTemp));
+        params.put("coolingRate", String.valueOf(coolingRate));
+
+        return new SearchResult("sa", best, bestEval, history, dt, solutionsEvaluated,
+                neighborhoodGeneratedCounts, params);
+    }
+
+    private static void incrementMoveCount(Map<String, Integer> counts, String moveKey) {
+        String type = classifyMove(moveKey);
+        counts.put(type, counts.getOrDefault(type, 0) + 1);
+    }
+
+    private static String classifyMove(String moveKey) {
+        if (moveKey == null || "noop".equals(moveKey)) {
+            return "noop";
+        }
+        if (moveKey.startsWith("R:")) {
+            return "relocate";
+        }
+        if (moveKey.startsWith("S:")) {
+            return "swap";
+        }
+        return "other";
     }
 }

@@ -10,10 +10,15 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import javax.imageio.ImageIO;
 
 public class Exporter {
+    private static final DateTimeFormatter RUN_TS_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     public static void exportHistoryCsv(List<Double> history, Path outputCsv) throws IOException {
         StringBuilder sb = new StringBuilder();
         sb.append("iter,best_objective\n");
@@ -21,6 +26,43 @@ public class Exporter {
             sb.append(i + 1).append(',').append(history.get(i)).append('\n');
         }
         Files.writeString(outputCsv, sb.toString(), StandardCharsets.UTF_8);
+    }
+
+    public static void appendExecutionLogCsv(
+            Path outputCsv,
+            String instanceName,
+            SearchResult result,
+            double penaltyWeight,
+            boolean enforceTimeWindows) throws IOException {
+        boolean fileExists = Files.exists(outputCsv);
+        StringBuilder sb = new StringBuilder();
+
+        if (!fileExists) {
+            sb.append(
+                    "timestamp,instance,algorithm,best_objective,best_distance,time_violation,capacity_violation,routes,runtime_ms,solutions_evaluated,generated_relocate,generated_swap,generated_noop,penalty_weight,enforce_time_windows,parameters\n");
+        }
+
+        sb.append(csv(LocalDateTime.now().format(RUN_TS_FORMAT))).append(',')
+                .append(csv(instanceName)).append(',')
+                .append(csv(result.algorithm)).append(',')
+                .append(result.bestEval.objective).append(',')
+                .append(result.bestEval.distance).append(',')
+                .append(result.bestEval.timeViolation).append(',')
+                .append(result.bestEval.capacityViolation).append(',')
+                .append(result.bestSolution.routes.size()).append(',')
+                .append(result.runtimeMs).append(',')
+                .append(result.solutionsEvaluated).append(',')
+                .append(result.neighborhoodGeneratedCounts.getOrDefault("relocate", 0)).append(',')
+                .append(result.neighborhoodGeneratedCounts.getOrDefault("swap", 0)).append(',')
+                .append(result.neighborhoodGeneratedCounts.getOrDefault("noop", 0)).append(',')
+                .append(penaltyWeight).append(',')
+                .append(enforceTimeWindows).append(',')
+                .append(csv(formatParams(result.parameters)))
+                .append('\n');
+
+        Files.writeString(outputCsv, sb.toString(), StandardCharsets.UTF_8,
+                java.nio.file.StandardOpenOption.CREATE,
+                java.nio.file.StandardOpenOption.APPEND);
     }
 
     public static void exportHistoryPng(List<Double> history, Path outputPng, String title) throws IOException {
@@ -166,5 +208,26 @@ public class Exporter {
 
     private static int toPixelY(double y, double minY, double spanY, int pyMin, int pyMax) {
         return pyMax - (int) ((y - minY) / spanY * (pyMax - pyMin));
+    }
+
+    private static String formatParams(Map<String, String> params) {
+        if (params == null || params.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (Map.Entry<String, String> e : params.entrySet()) {
+            if (!first) {
+                sb.append("; ");
+            }
+            sb.append(e.getKey()).append('=').append(e.getValue());
+            first = false;
+        }
+        return sb.toString();
+    }
+
+    private static String csv(String value) {
+        String safe = value == null ? "" : value;
+        return '"' + safe.replace("\"", "\"\"") + '"';
     }
 }

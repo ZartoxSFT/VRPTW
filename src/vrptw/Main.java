@@ -3,59 +3,96 @@ package vrptw;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Scanner;
 
 public class Main {
+    private static final Path LAST_CONFIG_PATH = Path.of("last_execution.properties");
+    private static final String DEFAULT_INSTANCE_PATH = "data/data101.vrp";
+    private static final String DEFAULT_ALGO = "sa";
+    private static final int DEFAULT_ITERATIONS = 30000;
+    private static final long DEFAULT_SEED = 42L;
+    private static final double DEFAULT_PENALTY_WEIGHT = 1000.0;
+    private static final boolean DEFAULT_ENFORCE_TIME_WINDOWS = false;
+    private static final double DEFAULT_INITIAL_TEMP = 2500.0;
+    private static final double DEFAULT_COOLING_RATE = 0.9995;
+    private static final int DEFAULT_NEIGHBORHOOD_SIZE = 40;
+    private static final int DEFAULT_TABU_TENURE = 25;
+
     public static void main(String[] args) throws Exception {
         Scanner scanner = new Scanner(System.in);
+        RunConfig config = loadRunConfig();
 
         System.out.println("=== Configuration VRPTW ===");
         System.out.println();
 
-        System.out.print("Fichier d'instance [data/data101.vrp]: ");
-        String instancePath = readLineOrDefault(scanner, "data/data101.vrp");
+        System.out.print("Réinitialiser les paramètres par défaut ? (oui/non) [non]: ");
+        boolean resetDefaults = readLineOrDefault(scanner, "non").toLowerCase().startsWith("o");
+        if (resetDefaults) {
+            config = defaultRunConfig();
+            System.out.println("Paramètres réinitialisés sur les valeurs par défaut.");
+            System.out.println();
+        }
 
-        System.out.print("Algorithme (sa/tabu/both) [both]: ");
-        String algo = readLineOrDefault(scanner, "sa").toLowerCase();
+        System.out.print("Fichier d'instance [" + config.instancePath + "]: ");
+        String instancePath = readLineOrDefault(scanner, config.instancePath);
 
-        System.out.print("Nombre d'itérations [30000]: ");
-        int iterations = readIntOrDefault(scanner, 30000);
+        System.out.print("Algorithme (sa/tabu/both) [" + config.algo + "]: ");
+        String algo = readLineOrDefault(scanner, config.algo).toLowerCase();
 
-        System.out.print("Graine aléatoire (seed) [42]: ");
-        long seed = readLongOrDefault(scanner, 42);
+        System.out.print("Nombre d'itérations [" + config.iterations + "]: ");
+        int iterations = readIntOrDefault(scanner, config.iterations);
 
-        System.out.print("Facteur de pénalité [1000.0]: ");
-        double penaltyWeight = readDoubleOrDefault(scanner, 1000.0);
+        System.out.print("Graine aléatoire (seed) [" + config.seed + "]: ");
+        long seed = readLongOrDefault(scanner, config.seed);
 
-        System.out.print("Appliquer les fenêtres temporelles ? (oui/non) [non]: ");
-        boolean enforceTimeWindows = readLineOrDefault(scanner, "non").toLowerCase().startsWith("o");
+        System.out.print("Facteur de pénalité [" + config.penaltyWeight + "]: ");
+        double penaltyWeight = readDoubleOrDefault(scanner, config.penaltyWeight);
+
+        String enforceDefault = boolToYesNo(config.enforceTimeWindows);
+        System.out.print("Appliquer les fenêtres temporelles ? (oui/non) [" + enforceDefault + "]: ");
+        boolean enforceTimeWindows = readLineOrDefault(scanner, enforceDefault).toLowerCase().startsWith("o");
 
         // Paramètres SA
-        double initialTemp = 2500.0;
-        double coolingRate = 0.9995;
+        double initialTemp = config.initialTemp;
+        double coolingRate = config.coolingRate;
         if ("sa".equals(algo) || "both".equals(algo)) {
             System.out.println();
             System.out.println("--- Paramètres Recuit Simulé ---");
-            System.out.print("Température initiale [2500.0]: ");
-            initialTemp = readDoubleOrDefault(scanner, 2500.0);
-            System.out.print("Taux de refroidissement (cooling rate) [0.9995]: ");
-            coolingRate = readDoubleOrDefault(scanner, 0.9995);
+            System.out.print("Température initiale [" + initialTemp + "]: ");
+            initialTemp = readDoubleOrDefault(scanner, initialTemp);
+            System.out.print("Taux de refroidissement (cooling rate) [" + coolingRate + "]: ");
+            coolingRate = readDoubleOrDefault(scanner, coolingRate);
         }
 
         // Paramètres Tabu
-        int neighborhoodSize = 40;
-        int tabuTenure = 25;
+        int neighborhoodSize = config.neighborhoodSize;
+        int tabuTenure = config.tabuTenure;
         if ("tabu".equals(algo) || "both".equals(algo)) {
             System.out.println();
             System.out.println("--- Paramètres Recherche Tabou ---");
-            System.out.print("Taille du voisinage [40]: ");
-            neighborhoodSize = readIntOrDefault(scanner, 40);
-            System.out.print("Taille de la liste tabu (tenure) [25]: ");
-            tabuTenure = readIntOrDefault(scanner, 25);
+            System.out.print("Taille du voisinage [" + neighborhoodSize + "]: ");
+            neighborhoodSize = readIntOrDefault(scanner, neighborhoodSize);
+            System.out.print("Taille de la liste tabu (tenure) [" + tabuTenure + "]: ");
+            tabuTenure = readIntOrDefault(scanner, tabuTenure);
         }
+
+        saveRunConfig(new RunConfig(
+                instancePath,
+                algo,
+                iterations,
+                seed,
+                penaltyWeight,
+                enforceTimeWindows,
+                initialTemp,
+                coolingRate,
+                neighborhoodSize,
+                tabuTenure));
 
         System.out.println();
         System.out.println("=== Chargement de l'instance ===");
@@ -238,5 +275,146 @@ public class Main {
             first = false;
         }
         return sb.toString();
+    }
+
+    private static String boolToYesNo(boolean value) {
+        return value ? "oui" : "non";
+    }
+
+    private static RunConfig defaultRunConfig() {
+        return new RunConfig(
+                DEFAULT_INSTANCE_PATH,
+                DEFAULT_ALGO,
+                DEFAULT_ITERATIONS,
+                DEFAULT_SEED,
+                DEFAULT_PENALTY_WEIGHT,
+                DEFAULT_ENFORCE_TIME_WINDOWS,
+                DEFAULT_INITIAL_TEMP,
+                DEFAULT_COOLING_RATE,
+                DEFAULT_NEIGHBORHOOD_SIZE,
+                DEFAULT_TABU_TENURE);
+    }
+
+    private static RunConfig loadRunConfig() {
+        RunConfig defaults = defaultRunConfig();
+        if (!Files.exists(LAST_CONFIG_PATH)) {
+            return defaults;
+        }
+
+        Properties p = new Properties();
+        try (InputStream in = Files.newInputStream(LAST_CONFIG_PATH)) {
+            p.load(in);
+        } catch (IOException e) {
+            System.out.println("Impossible de lire la config précédente, utilisation des valeurs par défaut.");
+            return defaults;
+        }
+
+        return new RunConfig(
+                p.getProperty("instancePath", defaults.instancePath),
+                p.getProperty("algo", defaults.algo),
+                parseIntOrDefault(p.getProperty("iterations"), defaults.iterations),
+                parseLongOrDefault(p.getProperty("seed"), defaults.seed),
+                parseDoubleOrDefault(p.getProperty("penaltyWeight"), defaults.penaltyWeight),
+                parseBooleanOrDefault(p.getProperty("enforceTimeWindows"), defaults.enforceTimeWindows),
+                parseDoubleOrDefault(p.getProperty("initialTemp"), defaults.initialTemp),
+                parseDoubleOrDefault(p.getProperty("coolingRate"), defaults.coolingRate),
+                parseIntOrDefault(p.getProperty("neighborhoodSize"), defaults.neighborhoodSize),
+                parseIntOrDefault(p.getProperty("tabuTenure"), defaults.tabuTenure));
+    }
+
+    private static void saveRunConfig(RunConfig config) {
+        Properties p = new Properties();
+        p.setProperty("instancePath", config.instancePath);
+        p.setProperty("algo", config.algo);
+        p.setProperty("iterations", String.valueOf(config.iterations));
+        p.setProperty("seed", String.valueOf(config.seed));
+        p.setProperty("penaltyWeight", String.valueOf(config.penaltyWeight));
+        p.setProperty("enforceTimeWindows", String.valueOf(config.enforceTimeWindows));
+        p.setProperty("initialTemp", String.valueOf(config.initialTemp));
+        p.setProperty("coolingRate", String.valueOf(config.coolingRate));
+        p.setProperty("neighborhoodSize", String.valueOf(config.neighborhoodSize));
+        p.setProperty("tabuTenure", String.valueOf(config.tabuTenure));
+
+        try (OutputStream out = Files.newOutputStream(LAST_CONFIG_PATH)) {
+            p.store(out, "Derniere configuration d'execution VRPTW");
+        } catch (IOException e) {
+            System.out.println("Impossible de sauvegarder la config d'exécution: " + e.getMessage());
+        }
+    }
+
+    private static int parseIntOrDefault(String value, int defaultValue) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private static long parseLongOrDefault(String value, long defaultValue) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private static double parseDoubleOrDefault(String value, double defaultValue) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            return Double.parseDouble(value.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private static boolean parseBooleanOrDefault(String value, boolean defaultValue) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        return Boolean.parseBoolean(value.trim());
+    }
+
+    private static class RunConfig {
+        final String instancePath;
+        final String algo;
+        final int iterations;
+        final long seed;
+        final double penaltyWeight;
+        final boolean enforceTimeWindows;
+        final double initialTemp;
+        final double coolingRate;
+        final int neighborhoodSize;
+        final int tabuTenure;
+
+        RunConfig(
+                String instancePath,
+                String algo,
+                int iterations,
+                long seed,
+                double penaltyWeight,
+                boolean enforceTimeWindows,
+                double initialTemp,
+                double coolingRate,
+                int neighborhoodSize,
+                int tabuTenure) {
+            this.instancePath = instancePath;
+            this.algo = algo;
+            this.iterations = iterations;
+            this.seed = seed;
+            this.penaltyWeight = penaltyWeight;
+            this.enforceTimeWindows = enforceTimeWindows;
+            this.initialTemp = initialTemp;
+            this.coolingRate = coolingRate;
+            this.neighborhoodSize = neighborhoodSize;
+            this.tabuTenure = tabuTenure;
+        }
     }
 }

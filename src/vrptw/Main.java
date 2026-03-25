@@ -13,8 +13,8 @@ public class Main {
         System.out.println("=== Configuration VRPTW ===");
         System.out.println();
 
-        System.out.print("Fichier d'instance [data/data101.vrp]: ");
-        String instancePath = readLineOrDefault(scanner, "data/data101.vrp");
+        System.out.print("Fichier d'instance [data/data102.vrp]: ");
+        String instancePath = readLineOrDefault(scanner, "data/data102.vrp");
 
         System.out.print("Algorithme (sa/tabu/both) [both]: ");
         String algo = readLineOrDefault(scanner, "both").toLowerCase();

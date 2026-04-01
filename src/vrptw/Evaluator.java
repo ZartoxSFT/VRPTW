@@ -7,32 +7,44 @@ public class Evaluator {
         public final double distance;
         public final double timeViolation;
         public final double capacityViolation;
+        public final double vehicleViolation;
+        public final boolean timeWindowsEnforced;
         public final double objective;
 
-        public Eval(double distance, double timeViolation, double capacityViolation, double objective) {
+        public Eval(double distance, double timeViolation, double capacityViolation, double vehicleViolation,
+                boolean timeWindowsEnforced, double objective) {
             this.distance = distance;
             this.timeViolation = timeViolation;
             this.capacityViolation = capacityViolation;
+            this.vehicleViolation = vehicleViolation;
+            this.timeWindowsEnforced = timeWindowsEnforced;
             this.objective = objective;
         }
 
         public boolean feasible() {
-            return timeViolation < 1e-9 && capacityViolation < 1e-9;
+            boolean timeFeasible = !timeWindowsEnforced || timeViolation < 1e-9;
+            return timeFeasible && capacityViolation < 1e-9 && vehicleViolation < 1e-9;
         }
     }
 
     private final VrpInstance instance;
     private final double penaltyWeight;
     private final boolean enforceTimeWindows;
+    private final int maxVehicles;
 
     public Evaluator(VrpInstance instance, double penaltyWeight) {
-        this(instance, penaltyWeight, true);
+        this(instance, penaltyWeight, true, Integer.MAX_VALUE);
     }
 
     public Evaluator(VrpInstance instance, double penaltyWeight, boolean enforceTimeWindows) {
+        this(instance, penaltyWeight, enforceTimeWindows, Integer.MAX_VALUE);
+    }
+
+    public Evaluator(VrpInstance instance, double penaltyWeight, boolean enforceTimeWindows, int maxVehicles) {
         this.instance = instance;
         this.penaltyWeight = penaltyWeight;
         this.enforceTimeWindows = enforceTimeWindows;
+        this.maxVehicles = maxVehicles <= 0 ? Integer.MAX_VALUE : maxVehicles;
     }
 
     public Eval evaluate(Solution s) {
@@ -48,8 +60,10 @@ public class Evaluator {
         }
 
         double timeComponent = enforceTimeWindows ? totalTimeViolation : 0.0;
-        double objective = totalDistance + penaltyWeight * (timeComponent + totalCapacityViolation);
-        return new Eval(totalDistance, totalTimeViolation, totalCapacityViolation, objective);
+        double vehicleViolation = Math.max(0, s.routes.size() - maxVehicles);
+        double objective = totalDistance + penaltyWeight * (timeComponent + totalCapacityViolation + vehicleViolation);
+        return new Eval(totalDistance, totalTimeViolation, totalCapacityViolation, vehicleViolation, enforceTimeWindows,
+                objective);
     }
 
     public RouteEval evaluateRoute(List<Integer> route) {
@@ -74,9 +88,14 @@ public class Evaluator {
             }
             distance += travel;
             double arrival = currentTime + travel;
-            double startService = Math.max(arrival, c.readyTime);
-            if (startService > c.dueTime) {
-                timeViolation += (startService - c.dueTime);
+            double startService = c.earliestFeasibleServiceStart(arrival);
+
+            if (startService < 0.0) {
+                int latestEnd = c.latestAvailabilityEnd();
+                if (arrival > latestEnd) {
+                    timeViolation += (arrival - latestEnd);
+                }
+                startService = arrival;
             }
 
             load += c.demand;

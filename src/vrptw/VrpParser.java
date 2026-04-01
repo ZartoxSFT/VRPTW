@@ -57,7 +57,10 @@ public class VrpParser {
                         Integer.parseInt(t[4]),
                         0,
                         0,
-                        true);
+                        true,
+                        List.of(new TimeWindow(
+                                Integer.parseInt(t[3]),
+                                Integer.parseInt(t[4]))));
                 continue;
             }
 
@@ -67,16 +70,20 @@ public class VrpParser {
                     continue;
                 }
                 int id = parseClientId(t[0]);
+                int readyTime = Integer.parseInt(t[3]);
+                int dueTime = Integer.parseInt(t[4]);
+                List<TimeWindow> windows = parseAvailabilityWindows(t, readyTime, dueTime);
                 Node c = new Node(
                         id,
                         t[0],
                         Double.parseDouble(t[1]),
                         Double.parseDouble(t[2]),
-                        Integer.parseInt(t[3]),
-                        Integer.parseInt(t[4]),
+                        readyTime,
+                        dueTime,
                         Integer.parseInt(t[5]),
                         Integer.parseInt(t[6]),
-                        false);
+                        false,
+                        windows);
                 clients.add(c);
             }
         }
@@ -103,5 +110,26 @@ public class VrpParser {
             return Integer.parseInt(token.substring(1));
         }
         return Integer.parseInt(token);
+    }
+
+    private List<TimeWindow> parseAvailabilityWindows(String[] tokens, int readyTime, int dueTime) {
+        List<TimeWindow> windows = new ArrayList<>();
+
+        // Format optionnel après les 7 colonnes standard:
+        // cX x y ready due demand service [w1Start w1End w2Start w2End ...]
+        int extraCount = tokens.length - 7;
+        if (extraCount >= 2 && extraCount % 2 == 0) {
+            for (int i = 7; i < tokens.length; i += 2) {
+                int start = Integer.parseInt(tokens[i]);
+                int end = Integer.parseInt(tokens[i + 1]);
+                windows.add(new TimeWindow(start, end));
+            }
+        }
+
+        if (windows.isEmpty()) {
+            windows.add(new TimeWindow(readyTime, dueTime));
+        }
+
+        return windows;
     }
 }

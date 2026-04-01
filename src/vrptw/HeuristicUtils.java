@@ -1,6 +1,7 @@
 package vrptw;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
@@ -46,8 +47,8 @@ public class HeuristicUtils {
                             : instance.distClientToClient(current, candidateId);
 
                     double arrival = currentTime + travel;
-                    double startService = Math.max(arrival, c.readyTime);
-                    if (startService > c.dueTime) {
+                    double startService = c.earliestFeasibleServiceStart(arrival);
+                    if (startService < 0.0) {
                         continue;
                     }
 
@@ -72,7 +73,12 @@ public class HeuristicUtils {
                         ? instance.distDepotToClient(bestClient)
                         : instance.distClientToClient(current, bestClient);
                 double arrival = currentTime + travel;
-                currentTime = Math.max(arrival, selected.readyTime) + selected.serviceTime;
+                double startService = selected.earliestFeasibleServiceStart(arrival);
+                if (startService < 0.0) {
+                    break;
+                }
+
+                currentTime = startService + selected.serviceTime;
                 currentLoad += selected.demand;
                 current = bestClient;
 
@@ -94,6 +100,49 @@ public class HeuristicUtils {
             return repairBySplitting(s, evaluator);
         }
         return s;
+    }
+
+    public static Solution buildInitialRandom(VrpInstance instance, Evaluator evaluator, long seed) {
+        return buildInitialRandom(instance, evaluator, new Random(seed));
+    }
+
+    public static Solution buildInitialRandom(VrpInstance instance, Evaluator evaluator, Random random) {
+        List<Integer> shuffledClients = new ArrayList<>();
+        for (Node c : instance.clients) {
+            shuffledClients.add(c.id);
+        }
+        Collections.shuffle(shuffledClients, random);
+
+        List<List<Integer>> routes = new ArrayList<>();
+
+        for (int clientId : shuffledClients) {
+            Node client = instance.getClient(clientId);
+            List<Integer> candidateRoutes = new ArrayList<>();
+
+            for (int r = 0; r < routes.size(); r++) {
+                int load = routeLoad(routes.get(r), instance);
+                if (load + client.demand <= instance.capacity) {
+                    candidateRoutes.add(r);
+                }
+            }
+
+            if (candidateRoutes.isEmpty()) {
+                List<Integer> route = new ArrayList<>();
+                route.add(clientId);
+                routes.add(route);
+            } else {
+                int selectedRoute = candidateRoutes.get(random.nextInt(candidateRoutes.size()));
+                List<Integer> route = routes.get(selectedRoute);
+                int pos = random.nextInt(route.size() + 1);
+                route.add(pos, clientId);
+            }
+        }
+
+        Solution randomSolution = new Solution(routes);
+        if (!evaluator.evaluate(randomSolution).feasible()) {
+            return repairBySplitting(randomSolution, evaluator);
+        }
+        return randomSolution;
     }
 
     private static Solution repairBySplitting(Solution s, Evaluator evaluator) {
@@ -129,6 +178,14 @@ public class HeuristicUtils {
             }
         }
         return best;
+    }
+
+    private static int routeLoad(List<Integer> route, VrpInstance instance) {
+        int load = 0;
+        for (int clientId : route) {
+            load += instance.getClient(clientId).demand;
+        }
+        return load;
     }
 
     public static Neighbor randomNeighbor(Solution base, Random random) {

@@ -18,6 +18,9 @@ public class Main {
     private static final int DEFAULT_ITERATIONS = 30000;
     private static final long DEFAULT_SEED = 42L;
     private static final double DEFAULT_PENALTY_WEIGHT = 1000.0;
+    private static final int DEFAULT_MAX_VEHICLES = Integer.MAX_VALUE;
+    private static final String DEFAULT_INIT_STRATEGY = "greedy";
+    private static final boolean DEFAULT_ESTIMATE_MIN_VEHICLES = true;
     private static final boolean DEFAULT_ENFORCE_TIME_WINDOWS = false;
     private static final double DEFAULT_INITIAL_TEMP = 2500.0;
     private static final double DEFAULT_COOLING_RATE = 0.9995;
@@ -54,6 +57,26 @@ public class Main {
         System.out.print("Facteur de pénalité [" + config.penaltyWeight + "]: ");
         double penaltyWeight = readDoubleOrDefault(scanner, config.penaltyWeight);
 
+        System.out.print("Génération solution initiale (greedy/random) [" + config.initialStrategy + "]: ");
+        String initialStrategy = readLineOrDefault(scanner, config.initialStrategy).toLowerCase();
+        if (!"random".equals(initialStrategy)) {
+            initialStrategy = "greedy";
+        }
+
+        String estimateDefault = boolToYesNo(config.estimateMinVehicles);
+        System.out
+                .print("Estimer le minimum de véhicules (sans/avec fenêtres) ? (oui/non) [" + estimateDefault + "]: ");
+        boolean estimateMinVehicles = readLineOrDefault(scanner, estimateDefault).toLowerCase().startsWith("o");
+
+        String maxVehiclesDisplay = config.maxVehicles == Integer.MAX_VALUE
+                ? "illimité"
+                : String.valueOf(config.maxVehicles);
+        System.out.print("Nombre max de véhicules [" + maxVehiclesDisplay + "]: ");
+        int maxVehicles = readIntOrDefault(scanner, config.maxVehicles);
+        if (maxVehicles <= 0) {
+            maxVehicles = Integer.MAX_VALUE;
+        }
+
         String enforceDefault = boolToYesNo(config.enforceTimeWindows);
         System.out.print("Appliquer les fenêtres temporelles ? (oui/non) [" + enforceDefault + "]: ");
         boolean enforceTimeWindows = readLineOrDefault(scanner, enforceDefault).toLowerCase().startsWith("o");
@@ -88,6 +111,9 @@ public class Main {
                 iterations,
                 seed,
                 penaltyWeight,
+                initialStrategy,
+                estimateMinVehicles,
+                maxVehicles,
                 enforceTimeWindows,
                 initialTemp,
                 coolingRate,
@@ -101,18 +127,37 @@ public class Main {
         VrpParser parser = new VrpParser();
         VrpInstance instance = parser.parse(Path.of(instancePath));
         System.out.println(instance.getStatistics());
+
+        if (estimateMinVehicles) {
+            System.out.println();
+            System.out.println("=== Estimation minimum véhicules ===");
+            System.out.println();
+
+            VehicleMinimizer.MinVehicleSummary summary = VehicleMinimizer.estimate(instance, penaltyWeight, seed);
+            System.out.printf("Borne inférieure (capacité): %d%n", summary.lowerBoundCapacity);
+            System.out.printf("Minimum faisable estimé sans fenêtres: %d%n", summary.minVehiclesNoTimeWindows);
+            System.out.printf("Minimum faisable estimé avec fenêtres: %d%n", summary.minVehiclesWithTimeWindows);
+            System.out.println();
+        }
         System.out.println();
 
         System.out.println("=== Résolution ===");
         System.out.println();
 
-        Evaluator evaluator = new Evaluator(instance, penaltyWeight, enforceTimeWindows);
+        Evaluator evaluator = new Evaluator(instance, penaltyWeight, enforceTimeWindows, maxVehicles);
 
-        Solution initial = HeuristicUtils.buildInitialGreedy(instance, evaluator);
+        Solution initial;
+        if ("random".equals(initialStrategy)) {
+            initial = HeuristicUtils.buildInitialRandom(instance, evaluator, seed);
+        } else {
+            initial = HeuristicUtils.buildInitialGreedy(instance, evaluator);
+        }
         Evaluator.Eval initEval = evaluator.evaluate(initial);
-        System.out.printf("Solution initiale: obj=%.2f dist=%.2f timeV=%.2f capV=%.2f routes=%d%n",
+        System.out.printf("Solution initiale: obj=%.2f dist=%.2f timeV=%.2f capV=%.2f vehV=%.2f routes=%d%n",
                 initEval.objective, initEval.distance, initEval.timeViolation, initEval.capacityViolation,
+                initEval.vehicleViolation,
                 initial.routes.size());
+        System.out.println("Stratégie initiale: " + initialStrategy);
         System.out.println();
 
         List<SearchResult> results = new ArrayList<>();
@@ -152,14 +197,17 @@ public class Main {
                     "Historique - " + r.algorithm + " - " + instance.name);
             Exporter.exportRoutesPng(instance, r.bestSolution, routesPng,
                     "Tournées - " + r.algorithm + " - " + instance.name);
-            Exporter.appendExecutionLogCsv(executionLogCsv, instance.name, r, penaltyWeight, enforceTimeWindows);
+            Exporter.appendExecutionLogCsv(executionLogCsv, instance.name, r, penaltyWeight, enforceTimeWindows,
+                    maxVehicles);
 
-            System.out.printf("[%s] obj=%.2f dist=%.2f timeV=%.2f capV=%.2f routes=%d | évaluations=%d temps=%dms%n",
+            System.out.printf(
+                    "[%s] obj=%.2f dist=%.2f timeV=%.2f capV=%.2f vehV=%.2f routes=%d | évaluations=%d temps=%dms%n",
                     r.algorithm,
                     r.bestEval.objective,
                     r.bestEval.distance,
                     r.bestEval.timeViolation,
                     r.bestEval.capacityViolation,
+                    r.bestEval.vehicleViolation,
                     r.bestSolution.routes.size(),
                     r.solutionsEvaluated,
                     r.runtimeMs);
@@ -288,6 +336,9 @@ public class Main {
                 DEFAULT_ITERATIONS,
                 DEFAULT_SEED,
                 DEFAULT_PENALTY_WEIGHT,
+                DEFAULT_INIT_STRATEGY,
+                DEFAULT_ESTIMATE_MIN_VEHICLES,
+                DEFAULT_MAX_VEHICLES,
                 DEFAULT_ENFORCE_TIME_WINDOWS,
                 DEFAULT_INITIAL_TEMP,
                 DEFAULT_COOLING_RATE,
@@ -315,6 +366,9 @@ public class Main {
                 parseIntOrDefault(p.getProperty("iterations"), defaults.iterations),
                 parseLongOrDefault(p.getProperty("seed"), defaults.seed),
                 parseDoubleOrDefault(p.getProperty("penaltyWeight"), defaults.penaltyWeight),
+                p.getProperty("initialStrategy", defaults.initialStrategy),
+                parseBooleanOrDefault(p.getProperty("estimateMinVehicles"), defaults.estimateMinVehicles),
+                parseIntOrDefault(p.getProperty("maxVehicles"), defaults.maxVehicles),
                 parseBooleanOrDefault(p.getProperty("enforceTimeWindows"), defaults.enforceTimeWindows),
                 parseDoubleOrDefault(p.getProperty("initialTemp"), defaults.initialTemp),
                 parseDoubleOrDefault(p.getProperty("coolingRate"), defaults.coolingRate),
@@ -329,6 +383,9 @@ public class Main {
         p.setProperty("iterations", String.valueOf(config.iterations));
         p.setProperty("seed", String.valueOf(config.seed));
         p.setProperty("penaltyWeight", String.valueOf(config.penaltyWeight));
+        p.setProperty("initialStrategy", config.initialStrategy);
+        p.setProperty("estimateMinVehicles", String.valueOf(config.estimateMinVehicles));
+        p.setProperty("maxVehicles", String.valueOf(config.maxVehicles));
         p.setProperty("enforceTimeWindows", String.valueOf(config.enforceTimeWindows));
         p.setProperty("initialTemp", String.valueOf(config.initialTemp));
         p.setProperty("coolingRate", String.valueOf(config.coolingRate));
@@ -388,6 +445,9 @@ public class Main {
         final int iterations;
         final long seed;
         final double penaltyWeight;
+        final String initialStrategy;
+        final boolean estimateMinVehicles;
+        final int maxVehicles;
         final boolean enforceTimeWindows;
         final double initialTemp;
         final double coolingRate;
@@ -400,6 +460,9 @@ public class Main {
                 int iterations,
                 long seed,
                 double penaltyWeight,
+                String initialStrategy,
+                boolean estimateMinVehicles,
+                int maxVehicles,
                 boolean enforceTimeWindows,
                 double initialTemp,
                 double coolingRate,
@@ -410,6 +473,9 @@ public class Main {
             this.iterations = iterations;
             this.seed = seed;
             this.penaltyWeight = penaltyWeight;
+            this.initialStrategy = initialStrategy;
+            this.estimateMinVehicles = estimateMinVehicles;
+            this.maxVehicles = maxVehicles;
             this.enforceTimeWindows = enforceTimeWindows;
             this.initialTemp = initialTemp;
             this.coolingRate = coolingRate;

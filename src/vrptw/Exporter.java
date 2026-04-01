@@ -33,13 +33,14 @@ public class Exporter {
             String instanceName,
             SearchResult result,
             double penaltyWeight,
-            boolean enforceTimeWindows) throws IOException {
+            boolean enforceTimeWindows,
+            int maxVehicles) throws IOException {
         boolean fileExists = Files.exists(outputCsv);
         StringBuilder sb = new StringBuilder();
 
         if (!fileExists) {
             sb.append(
-                    "timestamp,instance,algorithm,best_objective,best_distance,time_violation,capacity_violation,routes,runtime_ms,solutions_evaluated,generated_relocate,generated_swap,generated_noop,penalty_weight,enforce_time_windows,parameters\n");
+                    "timestamp,instance,algorithm,best_objective,best_distance,time_violation,capacity_violation,vehicle_violation,routes,runtime_ms,solutions_evaluated,generated_relocate,generated_swap,generated_noop,penalty_weight,enforce_time_windows,max_vehicles,parameters\n");
         }
 
         sb.append(csv(LocalDateTime.now().format(RUN_TS_FORMAT))).append(',')
@@ -49,6 +50,7 @@ public class Exporter {
                 .append(result.bestEval.distance).append(',')
                 .append(result.bestEval.timeViolation).append(',')
                 .append(result.bestEval.capacityViolation).append(',')
+                .append(result.bestEval.vehicleViolation).append(',')
                 .append(result.bestSolution.routes.size()).append(',')
                 .append(result.runtimeMs).append(',')
                 .append(result.solutionsEvaluated).append(',')
@@ -57,6 +59,7 @@ public class Exporter {
                 .append(result.neighborhoodGeneratedCounts.getOrDefault("noop", 0)).append(',')
                 .append(penaltyWeight).append(',')
                 .append(enforceTimeWindows).append(',')
+                .append(maxVehicles).append(',')
                 .append(csv(formatParams(result.parameters)))
                 .append('\n');
 

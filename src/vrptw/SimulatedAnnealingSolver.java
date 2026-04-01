@@ -14,6 +14,7 @@ public class SimulatedAnnealingSolver {
             int iterations,
             double initialTemp,
             double coolingRate,
+            String neighborhoodType,
             long seed) {
         long t0 = System.currentTimeMillis();
         Random random = new Random(seed);
@@ -30,10 +31,11 @@ public class SimulatedAnnealingSolver {
         Map<String, Integer> neighborhoodGeneratedCounts = new LinkedHashMap<>();
         neighborhoodGeneratedCounts.put("relocate", 0);
         neighborhoodGeneratedCounts.put("swap", 0);
+        neighborhoodGeneratedCounts.put("2opt", 0);
         neighborhoodGeneratedCounts.put("noop", 0);
 
         for (int i = 0; i < iterations; i++) {
-            HeuristicUtils.Neighbor neighbor = HeuristicUtils.randomNeighbor(current, random);
+            HeuristicUtils.Neighbor neighbor = HeuristicUtils.randomNeighbor(current, random, neighborhoodType);
             incrementMoveCount(neighborhoodGeneratedCounts, neighbor.moveKey);
             Solution candidate = neighbor.solution;
             Evaluator.Eval candidateEval = evaluator.evaluate(candidate);
@@ -63,6 +65,7 @@ public class SimulatedAnnealingSolver {
         params.put("seed", String.valueOf(seed));
         params.put("initialTemp", String.valueOf(initialTemp));
         params.put("coolingRate", String.valueOf(coolingRate));
+        params.put("neighborhoodType", HeuristicUtils.normalizeNeighborhoodType(neighborhoodType));
 
         return new SearchResult("sa", best, bestEval, history, dt, solutionsEvaluated,
                 neighborhoodGeneratedCounts, params);
@@ -82,6 +85,9 @@ public class SimulatedAnnealingSolver {
         }
         if (moveKey.startsWith("S:")) {
             return "swap";
+        }
+        if (moveKey.startsWith("O:")) {
+            return "2opt";
         }
         return "other";
     }

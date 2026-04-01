@@ -18,6 +18,7 @@ public class TabuSearchSolver {
             int iterations,
             int neighborhoodSize,
             int tabuTenure,
+            String neighborhoodType,
             long seed) {
         long t0 = System.currentTimeMillis();
         Random random = new Random(seed);
@@ -35,6 +36,7 @@ public class TabuSearchSolver {
         Map<String, Integer> neighborhoodGeneratedCounts = new LinkedHashMap<>();
         neighborhoodGeneratedCounts.put("relocate", 0);
         neighborhoodGeneratedCounts.put("swap", 0);
+        neighborhoodGeneratedCounts.put("2opt", 0);
         neighborhoodGeneratedCounts.put("noop", 0);
 
         for (int i = 0; i < iterations; i++) {
@@ -43,7 +45,7 @@ public class TabuSearchSolver {
             String bestMove = null;
 
             for (int k = 0; k < neighborhoodSize; k++) {
-                HeuristicUtils.Neighbor n = HeuristicUtils.randomNeighbor(current, random);
+                HeuristicUtils.Neighbor n = HeuristicUtils.randomNeighbor(current, random, neighborhoodType);
                 incrementMoveCount(neighborhoodGeneratedCounts, n.moveKey);
                 Evaluator.Eval ev = evaluator.evaluate(n.solution);
                 solutionsEvaluated++;
@@ -61,7 +63,7 @@ public class TabuSearchSolver {
             }
 
             if (bestCandidate == null) {
-                HeuristicUtils.Neighbor fallback = HeuristicUtils.randomNeighbor(current, random);
+                HeuristicUtils.Neighbor fallback = HeuristicUtils.randomNeighbor(current, random, neighborhoodType);
                 incrementMoveCount(neighborhoodGeneratedCounts, fallback.moveKey);
                 bestCandidate = fallback.solution;
                 bestCandidateEval = evaluator.evaluate(bestCandidate);
@@ -95,6 +97,7 @@ public class TabuSearchSolver {
         params.put("seed", String.valueOf(seed));
         params.put("neighborhoodSize", String.valueOf(neighborhoodSize));
         params.put("tabuTenure", String.valueOf(tabuTenure));
+        params.put("neighborhoodType", HeuristicUtils.normalizeNeighborhoodType(neighborhoodType));
 
         return new SearchResult("tabu", best, bestEval, history, dt, solutionsEvaluated,
                 neighborhoodGeneratedCounts, params);
@@ -114,6 +117,9 @@ public class TabuSearchSolver {
         }
         if (moveKey.startsWith("S:")) {
             return "swap";
+        }
+        if (moveKey.startsWith("O:")) {
+            return "2opt";
         }
         return "other";
     }

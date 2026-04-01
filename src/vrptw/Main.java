@@ -21,6 +21,8 @@ public class Main {
     private static final int DEFAULT_MAX_VEHICLES = Integer.MAX_VALUE;
     private static final String DEFAULT_INIT_STRATEGY = "greedy";
     private static final boolean DEFAULT_ESTIMATE_MIN_VEHICLES = true;
+    private static final String DEFAULT_SA_NEIGHBORHOOD_TYPE = "mixed";
+    private static final String DEFAULT_NEIGHBORHOOD_TYPE = "mixed";
     private static final boolean DEFAULT_ENFORCE_TIME_WINDOWS = false;
     private static final double DEFAULT_INITIAL_TEMP = 2500.0;
     private static final double DEFAULT_COOLING_RATE = 0.9995;
@@ -84,6 +86,7 @@ public class Main {
         // Paramètres SA
         double initialTemp = config.initialTemp;
         double coolingRate = config.coolingRate;
+        String saNeighborhoodType = HeuristicUtils.normalizeNeighborhoodType(config.saNeighborhoodType);
         if ("sa".equals(algo) || "both".equals(algo)) {
             System.out.println();
             System.out.println("--- Paramètres Recuit Simulé ---");
@@ -91,11 +94,15 @@ public class Main {
             initialTemp = readDoubleOrDefault(scanner, initialTemp);
             System.out.print("Taux de refroidissement (cooling rate) [" + coolingRate + "]: ");
             coolingRate = readDoubleOrDefault(scanner, coolingRate);
+            System.out.print("Type de voisinage SA (relocate/exchange/2opt/mixed) [" + saNeighborhoodType + "]: ");
+            saNeighborhoodType = HeuristicUtils
+                    .normalizeNeighborhoodType(readLineOrDefault(scanner, saNeighborhoodType));
         }
 
         // Paramètres Tabu
         int neighborhoodSize = config.neighborhoodSize;
         int tabuTenure = config.tabuTenure;
+        String neighborhoodType = HeuristicUtils.normalizeNeighborhoodType(config.neighborhoodType);
         if ("tabu".equals(algo) || "both".equals(algo)) {
             System.out.println();
             System.out.println("--- Paramètres Recherche Tabou ---");
@@ -103,6 +110,9 @@ public class Main {
             neighborhoodSize = readIntOrDefault(scanner, neighborhoodSize);
             System.out.print("Taille de la liste tabu (tenure) [" + tabuTenure + "]: ");
             tabuTenure = readIntOrDefault(scanner, tabuTenure);
+            System.out.print("Type de voisinage (relocate/exchange/2opt/mixed) [" + neighborhoodType + "]: ");
+            neighborhoodType = HeuristicUtils
+                    .normalizeNeighborhoodType(readLineOrDefault(scanner, neighborhoodType));
         }
 
         saveRunConfig(new RunConfig(
@@ -117,7 +127,9 @@ public class Main {
                 enforceTimeWindows,
                 initialTemp,
                 coolingRate,
+                saNeighborhoodType,
                 neighborhoodSize,
+                neighborhoodType,
                 tabuTenure));
 
         System.out.println();
@@ -164,14 +176,15 @@ public class Main {
 
         if ("sa".equals(algo) || "both".equals(algo)) {
             SimulatedAnnealingSolver sa = new SimulatedAnnealingSolver();
-            SearchResult r = sa.solve(instance, initial, evaluator, iterations, initialTemp, coolingRate, seed);
+            SearchResult r = sa.solve(instance, initial, evaluator, iterations, initialTemp, coolingRate,
+                    saNeighborhoodType, seed);
             results.add(r);
         }
 
         if ("tabu".equals(algo) || "both".equals(algo)) {
             TabuSearchSolver tabu = new TabuSearchSolver();
             SearchResult r = tabu.solve(instance, initial, evaluator, iterations, neighborhoodSize, tabuTenure,
-                    seed + 7);
+                    neighborhoodType, seed + 7);
             results.add(r);
         }
 
@@ -211,9 +224,10 @@ public class Main {
                     r.bestSolution.routes.size(),
                     r.solutionsEvaluated,
                     r.runtimeMs);
-            System.out.printf("  voisinages générés: relocate=%d swap=%d noop=%d%n",
+            System.out.printf("  voisinages générés: relocate=%d swap=%d 2opt=%d noop=%d%n",
                     r.neighborhoodGeneratedCounts.getOrDefault("relocate", 0),
                     r.neighborhoodGeneratedCounts.getOrDefault("swap", 0),
+                    r.neighborhoodGeneratedCounts.getOrDefault("2opt", 0),
                     r.neighborhoodGeneratedCounts.getOrDefault("noop", 0));
             System.out.println("  paramètres: " + formatParams(r.parameters));
             System.out.println("  -> " + historyCsv);
@@ -342,7 +356,9 @@ public class Main {
                 DEFAULT_ENFORCE_TIME_WINDOWS,
                 DEFAULT_INITIAL_TEMP,
                 DEFAULT_COOLING_RATE,
+                DEFAULT_SA_NEIGHBORHOOD_TYPE,
                 DEFAULT_NEIGHBORHOOD_SIZE,
+                DEFAULT_NEIGHBORHOOD_TYPE,
                 DEFAULT_TABU_TENURE);
     }
 
@@ -372,7 +388,9 @@ public class Main {
                 parseBooleanOrDefault(p.getProperty("enforceTimeWindows"), defaults.enforceTimeWindows),
                 parseDoubleOrDefault(p.getProperty("initialTemp"), defaults.initialTemp),
                 parseDoubleOrDefault(p.getProperty("coolingRate"), defaults.coolingRate),
+                p.getProperty("saNeighborhoodType", defaults.saNeighborhoodType),
                 parseIntOrDefault(p.getProperty("neighborhoodSize"), defaults.neighborhoodSize),
+                p.getProperty("neighborhoodType", defaults.neighborhoodType),
                 parseIntOrDefault(p.getProperty("tabuTenure"), defaults.tabuTenure));
     }
 
@@ -389,7 +407,9 @@ public class Main {
         p.setProperty("enforceTimeWindows", String.valueOf(config.enforceTimeWindows));
         p.setProperty("initialTemp", String.valueOf(config.initialTemp));
         p.setProperty("coolingRate", String.valueOf(config.coolingRate));
+        p.setProperty("saNeighborhoodType", config.saNeighborhoodType);
         p.setProperty("neighborhoodSize", String.valueOf(config.neighborhoodSize));
+        p.setProperty("neighborhoodType", config.neighborhoodType);
         p.setProperty("tabuTenure", String.valueOf(config.tabuTenure));
 
         try (OutputStream out = Files.newOutputStream(LAST_CONFIG_PATH)) {
@@ -451,7 +471,9 @@ public class Main {
         final boolean enforceTimeWindows;
         final double initialTemp;
         final double coolingRate;
+        final String saNeighborhoodType;
         final int neighborhoodSize;
+        final String neighborhoodType;
         final int tabuTenure;
 
         RunConfig(
@@ -466,7 +488,9 @@ public class Main {
                 boolean enforceTimeWindows,
                 double initialTemp,
                 double coolingRate,
+                String saNeighborhoodType,
                 int neighborhoodSize,
+                String neighborhoodType,
                 int tabuTenure) {
             this.instancePath = instancePath;
             this.algo = algo;
@@ -479,7 +503,9 @@ public class Main {
             this.enforceTimeWindows = enforceTimeWindows;
             this.initialTemp = initialTemp;
             this.coolingRate = coolingRate;
+            this.saNeighborhoodType = HeuristicUtils.normalizeNeighborhoodType(saNeighborhoodType);
             this.neighborhoodSize = neighborhoodSize;
+            this.neighborhoodType = HeuristicUtils.normalizeNeighborhoodType(neighborhoodType);
             this.tabuTenure = tabuTenure;
         }
     }

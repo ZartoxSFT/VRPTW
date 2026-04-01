@@ -1,2 +1,2 @@
 timestamp,instance,algorithm,best_objective,best_distance,time_violation,capacity_violation,vehicle_violation,routes,runtime_ms,solutions_evaluated,generated_relocate,generated_swap,generated_noop,penalty_weight,enforce_time_windows,max_vehicles,parameters
-"2026-04-01 11:49:00","data101.vrp","sa",3969.178165725152,969.1781657251523,12195.182907573262,0.0,3.0,8,675,520001,260236,259764,0,1000.0,false,5,"iterations=520000; seed=42; initialTemp=2500.0; coolingRate=0.9995"
+"2026-04-01 12:30:03","data101.vrp","sa",1195.9334667165467,1195.9334667165467,12974.371286511316,0.0,0.0,9,41,30001,10041,10095,0,1000.0,false,2147483647,"iterations=30000; seed=42; initialTemp=2500.0; coolingRate=0.9995; neighborhoodType=mixed"

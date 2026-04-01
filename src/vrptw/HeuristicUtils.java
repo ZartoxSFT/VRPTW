@@ -189,17 +189,48 @@ public class HeuristicUtils {
     }
 
     public static Neighbor randomNeighbor(Solution base, Random random) {
+        return randomNeighbor(base, random, "mixed");
+    }
+
+    public static Neighbor randomNeighbor(Solution base, Random random, String neighborhoodType) {
         if (base.routes.isEmpty()) {
             return new Neighbor(base.deepCopy(), "noop");
         }
 
         Solution copy = base.deepCopy();
-        boolean relocate = random.nextBoolean();
-
-        if (relocate) {
+        String mode = normalizeNeighborhoodType(neighborhoodType);
+        if ("relocate".equals(mode)) {
             return randomRelocate(copy, random);
         }
-        return randomSwap(copy, random);
+        if ("exchange".equals(mode)) {
+            return randomSwap(copy, random);
+        }
+        if ("2opt".equals(mode)) {
+            return randomTwoOpt(copy, random);
+        }
+
+        int pick = random.nextInt(3);
+        if (pick == 0) {
+            return randomRelocate(copy, random);
+        }
+        if (pick == 1) {
+            return randomSwap(copy, random);
+        }
+        return randomTwoOpt(copy, random);
+    }
+
+    public static String normalizeNeighborhoodType(String neighborhoodType) {
+        if (neighborhoodType == null) {
+            return "mixed";
+        }
+        String t = neighborhoodType.trim().toLowerCase();
+        if ("2-opt".equals(t) || "two-opt".equals(t)) {
+            return "2opt";
+        }
+        if ("relocate".equals(t) || "exchange".equals(t) || "2opt".equals(t) || "mixed".equals(t)) {
+            return t;
+        }
+        return "mixed";
     }
 
     private static Neighbor randomRelocate(Solution s, Random random) {
@@ -243,6 +274,35 @@ public class HeuristicUtils {
 
         String move = "S:" + c1 + ":" + c2;
         return new Neighbor(s, move);
+    }
+
+    private static Neighbor randomTwoOpt(Solution s, Random random) {
+        List<List<Integer>> routes = s.routes;
+        List<Integer> candidates = new ArrayList<>();
+        for (int i = 0; i < routes.size(); i++) {
+            if (routes.get(i).size() >= 4) {
+                candidates.add(i);
+            }
+        }
+        if (candidates.isEmpty()) {
+            return new Neighbor(s, "noop");
+        }
+
+        int routeIndex = candidates.get(random.nextInt(candidates.size()));
+        List<Integer> route = routes.get(routeIndex);
+
+        int i = random.nextInt(route.size() - 2);
+        int j = i + 1 + random.nextInt(route.size() - i - 1);
+
+        while (i < j) {
+            int tmp = route.get(i);
+            route.set(i, route.get(j));
+            route.set(j, tmp);
+            i++;
+            j--;
+        }
+
+        return new Neighbor(s, "O:" + routeIndex);
     }
 
     private static int pickNonEmptyRoute(List<List<Integer>> routes, Random random) {

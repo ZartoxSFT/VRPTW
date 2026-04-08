@@ -19,6 +19,7 @@ public class Main {
     private static final long DEFAULT_SEED = 42L;
     private static final double DEFAULT_PENALTY_WEIGHT = 1000.0;
     private static final int DEFAULT_MAX_VEHICLES = Integer.MAX_VALUE;
+    private static final boolean DEFAULT_SWEEP_VEHICLE_COUNTS = true;
     private static final String DEFAULT_INIT_STRATEGY = "greedy";
     private static final boolean DEFAULT_ESTIMATE_MIN_VEHICLES = true;
     private static final String DEFAULT_SA_NEIGHBORHOOD_TYPE = "mixed";
@@ -79,6 +80,8 @@ public class Main {
             maxVehicles = Integer.MAX_VALUE;
         }
 
+        boolean sweepVehicleCounts = true;
+
         String enforceDefault = boolToYesNo(config.enforceTimeWindows);
         System.out.print("Appliquer les fenêtres temporelles ? (oui/non) [" + enforceDefault + "]: ");
         boolean enforceTimeWindows = readLineOrDefault(scanner, enforceDefault).toLowerCase().startsWith("o");
@@ -124,6 +127,7 @@ public class Main {
                 initialStrategy,
                 estimateMinVehicles,
                 maxVehicles,
+                sweepVehicleCounts,
                 enforceTimeWindows,
                 initialTemp,
                 coolingRate,
@@ -156,39 +160,68 @@ public class Main {
         System.out.println("=== Résolution ===");
         System.out.println();
 
-        Evaluator evaluator = new Evaluator(instance, penaltyWeight, enforceTimeWindows, maxVehicles);
-
-        Solution initial;
-        if ("random".equals(initialStrategy)) {
-            initial = HeuristicUtils.buildInitialRandom(instance, evaluator, seed);
-        } else {
-            initial = HeuristicUtils.buildInitialGreedy(instance, evaluator);
-        }
-        Evaluator.Eval initEval = evaluator.evaluate(initial);
-        System.out.printf("Solution initiale: obj=%.2f dist=%.2f timeV=%.2f capV=%.2f vehV=%.2f routes=%d%n",
-                initEval.objective, initEval.distance, initEval.timeViolation, initEval.capacityViolation,
-                initEval.vehicleViolation,
-                initial.routes.size());
-        System.out.println("Stratégie initiale: " + initialStrategy);
-        System.out.println();
-
-        List<SearchResult> results = new ArrayList<>();
-
-        if ("sa".equals(algo) || "both".equals(algo)) {
-            SimulatedAnnealingSolver sa = new SimulatedAnnealingSolver();
-            SearchResult r = sa.solve(instance, initial, evaluator, iterations, initialTemp, coolingRate,
-                    saNeighborhoodType, seed);
-            results.add(r);
+        int maxVehiclesToTest = maxVehicles == Integer.MAX_VALUE
+                ? instance.clientCount()
+                : Math.min(maxVehicles, instance.clientCount());
+        if (maxVehiclesToTest <= 0) {
+            maxVehiclesToTest = instance.clientCount();
         }
 
-        if ("tabu".equals(algo) || "both".equals(algo)) {
-            TabuSearchSolver tabu = new TabuSearchSolver();
-            SearchResult r = tabu.solve(instance, initial, evaluator, iterations, neighborhoodSize, tabuTenure,
-                    neighborhoodType, seed + 7);
-            results.add(r);
+        int firstVehicleCount = sweepVehicleCounts ? 1 : maxVehiclesToTest;
+        int lastVehicleCount = maxVehiclesToTest;
+
+        List<RunOutcome> outcomes = new ArrayList<>();
+        RunOutcome bestOverall = null;
+
+        for (int vehicleLimit = firstVehicleCount; vehicleLimit <= lastVehicleCount; vehicleLimit++) {
+            Evaluator evaluator = new Evaluator(instance, penaltyWeight, enforceTimeWindows, vehicleLimit);
+
+            long initSeed = seed + 1_000_003L * vehicleLimit;
+            Solution initial;
+            if ("random".equals(initialStrategy)) {
+                initial = HeuristicUtils.buildInitialRandom(instance, evaluator, initSeed);
+            } else {
+                initial = HeuristicUtils.buildInitialGreedy(instance, evaluator);
+            }
+
+            Evaluator.Eval initEval = evaluator.evaluate(initial);
+            System.out.printf(
+                    "k=%d | Initiale: obj=%.2f dist=%.2f timeV=%.2f capV=%.2f vehV=%.2f routes=%d | faisable=%s%n",
+                    vehicleLimit,
+                    initEval.objective,
+                    initEval.distance,
+                    initEval.timeViolation,
+                    initEval.capacityViolation,
+                    initEval.vehicleViolation,
+                    initial.routes.size(),
+                    boolToYesNo(initEval.feasible()));
+
+            if ("sa".equals(algo) || "both".equals(algo)) {
+                SimulatedAnnealingSolver sa = new SimulatedAnnealingSolver();
+                SearchResult r = sa.solve(instance, initial, evaluator, iterations, initialTemp, coolingRate,
+                        saNeighborhoodType, seed + 31L * vehicleLimit);
+                r.parameters.put("vehicleLimit", String.valueOf(vehicleLimit));
+                RunOutcome outcome = new RunOutcome(vehicleLimit, r);
+                outcomes.add(outcome);
+                if (isBetterOverall(outcome, bestOverall)) {
+                    bestOverall = outcome;
+                }
+            }
+
+            if ("tabu".equals(algo) || "both".equals(algo)) {
+                TabuSearchSolver tabu = new TabuSearchSolver();
+                SearchResult r = tabu.solve(instance, initial, evaluator, iterations, neighborhoodSize, tabuTenure,
+                        neighborhoodType, seed + 7L + 31L * vehicleLimit);
+                r.parameters.put("vehicleLimit", String.valueOf(vehicleLimit));
+                RunOutcome outcome = new RunOutcome(vehicleLimit, r);
+                outcomes.add(outcome);
+                if (isBetterOverall(outcome, bestOverall)) {
+                    bestOverall = outcome;
+                }
+            }
         }
 
-        if (results.isEmpty()) {
+        if (outcomes.isEmpty()) {
             throw new IllegalArgumentException("--algo doit être sa, tabu ou both");
         }
 
@@ -196,8 +229,9 @@ public class Main {
         System.out.println("=== Résultats ===");
         System.out.println();
 
-        for (SearchResult r : results) {
-            String stem = fileStem(instancePath) + "_" + r.algorithm;
+        for (RunOutcome outcome : outcomes) {
+            SearchResult r = outcome.result;
+            String stem = fileStem(instancePath) + "_" + r.algorithm + "_v" + outcome.vehicleLimit;
             Path algoRootDir = algorithmResultRoot(r.algorithm);
             Path outDir = createNextExperimentDir(algoRootDir);
             Path historyCsv = outDir.resolve(stem + "_history.csv");
@@ -211,17 +245,19 @@ public class Main {
             Exporter.exportRoutesPng(instance, r.bestSolution, routesPng,
                     "Tournées - " + r.algorithm + " - " + instance.name);
             Exporter.appendExecutionLogCsv(executionLogCsv, instance.name, r, penaltyWeight, enforceTimeWindows,
-                    maxVehicles);
+                    outcome.vehicleLimit);
 
             System.out.printf(
-                    "[%s] obj=%.2f dist=%.2f timeV=%.2f capV=%.2f vehV=%.2f routes=%d | évaluations=%d temps=%dms%n",
+                    "[%s][k=%d] obj=%.2f dist=%.2f timeV=%.2f capV=%.2f vehV=%.2f routes=%d | faisable=%s | évaluations=%d temps=%dms%n",
                     r.algorithm,
+                    outcome.vehicleLimit,
                     r.bestEval.objective,
                     r.bestEval.distance,
                     r.bestEval.timeViolation,
                     r.bestEval.capacityViolation,
                     r.bestEval.vehicleViolation,
                     r.bestSolution.routes.size(),
+                    boolToYesNo(r.bestEval.feasible()),
                     r.solutionsEvaluated,
                     r.runtimeMs);
             System.out.printf("  voisinages générés: relocate=%d swap=%d 2opt=%d noop=%d%n",
@@ -236,6 +272,44 @@ public class Main {
             System.out.println("  -> " + executionLogCsv);
             System.out.println();
         }
+
+        if (bestOverall != null) {
+            SearchResult best = bestOverall.result;
+            System.out.println("=== Meilleure solution globale ===");
+            System.out.printf(
+                    "Algo=%s | k=%d | obj=%.2f dist=%.2f routes=%d | faisable=%s%n",
+                    best.algorithm,
+                    bestOverall.vehicleLimit,
+                    best.bestEval.objective,
+                    best.bestEval.distance,
+                    best.bestSolution.routes.size(),
+                    boolToYesNo(best.bestEval.feasible()));
+            System.out.println();
+        }
+    }
+
+    private static boolean isBetterOverall(RunOutcome candidate, RunOutcome incumbent) {
+        if (incumbent == null) {
+            return true;
+        }
+
+        SearchResult cand = candidate.result;
+        SearchResult best = incumbent.result;
+        boolean candFeasible = cand.bestEval.feasible();
+        boolean bestFeasible = best.bestEval.feasible();
+
+        if (candFeasible != bestFeasible) {
+            return candFeasible;
+        }
+
+        if (candFeasible) {
+            if (Math.abs(cand.bestEval.distance - best.bestEval.distance) > 1e-9) {
+                return cand.bestEval.distance < best.bestEval.distance;
+            }
+            return cand.bestEval.objective < best.bestEval.objective;
+        }
+
+        return cand.bestEval.objective < best.bestEval.objective;
     }
 
     private static Path algorithmResultRoot(String algorithm) {
@@ -353,6 +427,7 @@ public class Main {
                 DEFAULT_INIT_STRATEGY,
                 DEFAULT_ESTIMATE_MIN_VEHICLES,
                 DEFAULT_MAX_VEHICLES,
+                DEFAULT_SWEEP_VEHICLE_COUNTS,
                 DEFAULT_ENFORCE_TIME_WINDOWS,
                 DEFAULT_INITIAL_TEMP,
                 DEFAULT_COOLING_RATE,
@@ -385,6 +460,7 @@ public class Main {
                 p.getProperty("initialStrategy", defaults.initialStrategy),
                 parseBooleanOrDefault(p.getProperty("estimateMinVehicles"), defaults.estimateMinVehicles),
                 parseIntOrDefault(p.getProperty("maxVehicles"), defaults.maxVehicles),
+                parseBooleanOrDefault(p.getProperty("sweepVehicleCounts"), defaults.sweepVehicleCounts),
                 parseBooleanOrDefault(p.getProperty("enforceTimeWindows"), defaults.enforceTimeWindows),
                 parseDoubleOrDefault(p.getProperty("initialTemp"), defaults.initialTemp),
                 parseDoubleOrDefault(p.getProperty("coolingRate"), defaults.coolingRate),
@@ -404,6 +480,7 @@ public class Main {
         p.setProperty("initialStrategy", config.initialStrategy);
         p.setProperty("estimateMinVehicles", String.valueOf(config.estimateMinVehicles));
         p.setProperty("maxVehicles", String.valueOf(config.maxVehicles));
+        p.setProperty("sweepVehicleCounts", String.valueOf(config.sweepVehicleCounts));
         p.setProperty("enforceTimeWindows", String.valueOf(config.enforceTimeWindows));
         p.setProperty("initialTemp", String.valueOf(config.initialTemp));
         p.setProperty("coolingRate", String.valueOf(config.coolingRate));
@@ -468,6 +545,7 @@ public class Main {
         final String initialStrategy;
         final boolean estimateMinVehicles;
         final int maxVehicles;
+        final boolean sweepVehicleCounts;
         final boolean enforceTimeWindows;
         final double initialTemp;
         final double coolingRate;
@@ -485,6 +563,7 @@ public class Main {
                 String initialStrategy,
                 boolean estimateMinVehicles,
                 int maxVehicles,
+                boolean sweepVehicleCounts,
                 boolean enforceTimeWindows,
                 double initialTemp,
                 double coolingRate,
@@ -500,6 +579,7 @@ public class Main {
             this.initialStrategy = initialStrategy;
             this.estimateMinVehicles = estimateMinVehicles;
             this.maxVehicles = maxVehicles;
+            this.sweepVehicleCounts = sweepVehicleCounts;
             this.enforceTimeWindows = enforceTimeWindows;
             this.initialTemp = initialTemp;
             this.coolingRate = coolingRate;
@@ -507,6 +587,16 @@ public class Main {
             this.neighborhoodSize = neighborhoodSize;
             this.neighborhoodType = HeuristicUtils.normalizeNeighborhoodType(neighborhoodType);
             this.tabuTenure = tabuTenure;
+        }
+    }
+
+    private static class RunOutcome {
+        final int vehicleLimit;
+        final SearchResult result;
+
+        RunOutcome(int vehicleLimit, SearchResult result) {
+            this.vehicleLimit = vehicleLimit;
+            this.result = result;
         }
     }
 }

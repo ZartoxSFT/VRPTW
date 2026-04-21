@@ -47,7 +47,7 @@ public class VehicleMinimizer {
                     return maxVehicles;
                 }
 
-                SearchResult tabuResult = tabu.solve(instance, randomInit, evaluator, 2500, 35, 20, "mixed",
+                SearchResult tabuResult = tabu.solve(instance, randomInit, evaluator, 2500, 20, "mixed",
                         attemptSeed + 1);
                 if (tabuResult.bestEval.feasible()) {
                     return maxVehicles;

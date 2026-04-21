@@ -16,7 +16,6 @@ public class TabuSearchSolver {
             Solution initial,
             Evaluator evaluator,
             int iterations,
-            int neighborhoodSize,
             int tabuTenure,
             String neighborhoodType,
             long seed) {
@@ -44,11 +43,14 @@ public class TabuSearchSolver {
             Evaluator.Eval bestCandidateEval = null;
             String bestMove = null;
 
-            for (int k = 0; k < neighborhoodSize; k++) {
-                HeuristicUtils.Neighbor n = HeuristicUtils.randomNeighbor(current, random, neighborhoodType);
+            // Generate and evaluate ALL neighbors
+            List<HeuristicUtils.Neighbor> allNeighbors = HeuristicUtils.getAllNeighbors(current, neighborhoodType);
+
+            for (HeuristicUtils.Neighbor n : allNeighbors) {
                 incrementMoveCount(neighborhoodGeneratedCounts, n.moveKey);
                 Evaluator.Eval ev = evaluator.evaluate(n.solution);
                 solutionsEvaluated++;
+                
                 boolean isTabu = tabuSet.contains(n.moveKey);
                 boolean aspiration = ev.objective < bestEval.objective;
                 if (isTabu && !aspiration) {
@@ -63,6 +65,7 @@ public class TabuSearchSolver {
             }
 
             if (bestCandidate == null) {
+                // Fallback: take a random neighbor if no improvement found
                 HeuristicUtils.Neighbor fallback = HeuristicUtils.randomNeighbor(current, random, neighborhoodType);
                 incrementMoveCount(neighborhoodGeneratedCounts, fallback.moveKey);
                 bestCandidate = fallback.solution;
@@ -95,7 +98,6 @@ public class TabuSearchSolver {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("iterations", String.valueOf(iterations));
         params.put("seed", String.valueOf(seed));
-        params.put("neighborhoodSize", String.valueOf(neighborhoodSize));
         params.put("tabuTenure", String.valueOf(tabuTenure));
         params.put("neighborhoodType", HeuristicUtils.normalizeNeighborhoodType(neighborhoodType));
 

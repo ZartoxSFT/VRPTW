@@ -1,116 +1,89 @@
-# Checklist rapport — VRPTW (Recuit simulé & Recherche Tabou)
+# To-Do tests uniquement (code déjà terminé)
 
-## 1) Objectif du rapport
-Comparer deux métaheuristiques pour le VRPTW :
-- Recuit simulé (SA)
-- Recherche Tabou (TS)
+Objectif: exécuter des tests propres, comparer SA vs Tabu, et produire une analyse claire pour le rapport.
 
-Objectifs de comparaison :
-- Qualité de solution (distance)
-- Faisabilité (contraintes capacité/fenêtres temporelles)
-- Temps de calcul
-- Stabilité entre plusieurs exécutions (seeds)
+## 1) Préparer le protocole de test
 
----
+- [ ] Définir la liste d'instances à tester (petites, moyennes, grandes).
+- [ ] Définir les seeds fixes pour la reproductibilité (ex: 10 seeds).
+- [ ] Définir le budget de calcul identique pour SA et Tabu (itérations, timeout éventuel).
+- [ ] Définir les paramètres testés pour SA (température initiale, cooling rate, voisinage).
+- [ ] Définir les paramètres testés pour Tabu (neighborhood size, tabu tenure, voisinage).
+- [ ] Définir deux modes d'évaluation séparés:
+  - [ ] sans fenêtres de temps,
+  - [ ] avec fenêtres de temps.
 
-## 2) Travail expérimental à réaliser
-- Exécuter SA et TS sur toutes les instances : `data101.vrp` à `data202.vrp`.
-- Faire plusieurs runs par instance (recommandé : 5 seeds).
-- Exporter pour chaque run :
-  - distance finale,
-  - violations (`timeV`, `capV`),
-  - nombre de tournées,
-  - temps d’exécution,
-  - image des tournées (`*_routes.png`),
-  - courbe d’historique (`*_history.png`) + CSV (`*_history.csv`).
+## 2) Vérifier le nombre minimal de véhicules (par instance)
 
----
+- [ ] Exécuter l'estimation du minimum sans TW.
+- [ ] Exécuter l'estimation du minimum avec TW.
+- [ ] Créer un tableau de synthèse par instance:
+  - [ ] borne inférieure capacité,
+  - [ ] minimum faisable sans TW,
+  - [ ] minimum faisable avec TW.
+- [ ] Pour les campagnes finales, fixer maxVehicles au minimum estimé du mode testé.
 
-## 3) Paramètres recommandés (point de départ)
-Utiliser un budget équitable entre algorithmes :
-- `iter = 30000`
-- `penaltyWeight = 1000`
+## 3) Campagne de tests SA
 
-### Recuit simulé (SA)
-- `T0 = 2500`
-- `coolingRate = 0.9995`
-- `iter = 30000`
-- `seed = 42`
+- [ ] Lancer toutes les combinaisons de paramètres SA prévues.
+- [ ] Faire plusieurs runs par combinaison (via seeds définies).
+- [ ] Exporter pour chaque run:
+  - [ ] distance finale,
+  - [ ] faisabilité (time/capacity/vehicle violations),
+  - [ ] nombre de véhicules final,
+  - [ ] temps d'exécution,
+  - [ ] nombre de solutions évaluées,
+  - [ ] historique de convergence.
 
-### Recherche Tabou (TS)
-- `neighborhoodSize = 40`
-- `tabuTenure = 25`
-- `iter = 30000`
-- `seed = 49`
+## 4) Campagne de tests Tabu
 
-### Seeds recommandées (stabilité)
-- `42, 43, 44, 45, 46`
+- [ ] Lancer toutes les combinaisons de paramètres Tabu prévues.
+- [ ] Faire plusieurs runs par combinaison (mêmes seeds que SA si possible).
+- [ ] Exporter les mêmes métriques que SA pour comparaison équitable.
 
----
+## 5) Tests de sensibilité (important pour l'analyse)
 
-## 4) Calibration (tuning) à inclure dans le rapport
-Faire un mini-tuning sur 2 instances représentatives (une plus contrainte, une plus souple), puis figer les paramètres globaux.
+- [ ] Sensibilité SA:
+  - [ ] effet de la température initiale,
+  - [ ] effet du cooling rate,
+  - [ ] effet du type de voisinage.
+- [ ] Sensibilité Tabu:
+  - [ ] effet de neighborhood size,
+  - [ ] effet de tabu tenure,
+  - [ ] effet du type de voisinage.
+- [ ] Comparer mixed vs voisinages simples (relocate/swap/2-opt).
 
-### Grille SA
-- `T0 ∈ {1000, 2500, 5000}`
-- `coolingRate ∈ {0.999, 0.9995, 0.9997}`
+## 6) Contrôles qualité des résultats
 
-### Grille TS
-- `tabuTenure ∈ {10, 25, 40}`
-- `neighborhoodSize ∈ {20, 40, 80}`
+- [ ] Vérifier qu'aucun client n'est oublié.
+- [ ] Vérifier qu'aucun client n'est dupliqué.
+- [ ] Vérifier la cohérence dépôt départ/retour sur chaque route.
+- [ ] Vérifier la cohérence faisabilité annoncée vs pénalités mesurées.
+- [ ] Vérifier la stabilité des résultats (moyenne, écart-type sur seeds).
 
-Critère de choix : meilleur compromis qualité/temps en moyenne.
+## 7) Tableaux et graphes pour le rapport
 
----
+- [ ] Tableau 1: minimum véhicules par instance (sans TW / avec TW).
+- [ ] Tableau 2: meilleure distance SA vs Tabu par instance.
+- [ ] Tableau 3: moyenne et écart-type SA vs Tabu (qualité + temps).
+- [ ] Tableau 4: influence des paramètres (sensibilité).
+- [ ] Figure 1: courbes de convergence représentatives.
+- [ ] Figure 2: visualisations de tournées finales (quelques cas clés).
 
-## 5) Justification du jeu de données (texte à reprendre)
-- Les instances sont homogènes en format VRPTW, ce qui permet une comparaison cohérente.
-- Le lot contient plusieurs profils de difficulté (fenêtres temporelles et capacité différentes selon les instances).
-- Utiliser tout le lot limite le biais lié à une instance unique.
-- La taille (100 clients) est suffisante pour évaluer des métaheuristiques en conditions réalistes.
+## 8) Analyse à rédiger dans le rapport
 
----
+- [ ] Expliquer le protocole de test (pour reproductibilité).
+- [ ] Justifier les choix de paramètres retenus.
+- [ ] Discuter qui gagne entre SA et Tabu selon:
+  - [ ] qualité,
+  - [ ] temps,
+  - [ ] robustesse.
+- [ ] Identifier les cas difficiles (TW serrées, instances grandes).
+- [ ] Donner les limites de l'étude et pistes d'amélioration.
 
-## 6) Indicateurs à présenter (tableaux)
-Pour chaque instance et chaque algorithme, rapporter :
-- Distance totale (`distance`)
-- Violation temporelle (`timeV`)
-- Violation de capacité (`capV`)
-- Nombre de tournées (`routes`)
-- Temps d’exécution (`runtimeMs`)
+## 9) Vérification finale avant rendu
 
-Sur les 5 seeds, ajouter :
-- moyenne,
-- écart-type,
-- meilleur,
-- pire.
-
----
-
-## 7) Plan d’analyse recommandé
-- Comparer SA vs TS sur la qualité finale des solutions.
-- Vérifier la faisabilité (idéalement `timeV = 0` et `capV = 0`).
-- Comparer vitesse de convergence via `*_history.png`.
-- Analyser la sensibilité aux paramètres (résultats du tuning).
-- Commenter les tournées via `*_routes.png` (cohérence géographique, croisements, retours dépôt).
-
----
-
-## 8) Trame de sections pour le rapport
-1. Introduction (VRPTW + objectif)
-2. Modélisation (variables, contraintes, objectif)
-3. Méthodes (SA, TS, voisinages, pénalisation)
-4. Protocole expérimental (instances, seeds, paramètres, machine)
-5. Résultats (tableaux + figures)
-6. Discussion (forces/faiblesses, sensibilité)
-7. Conclusion et perspectives
-
----
-
-## 9) Vérifications finales avant rendu
-- Même budget d’itérations pour SA et TS.
-- Même jeu d’instances pour les deux méthodes.
-- Plusieurs seeds exécutées.
-- Résultats agrégés (moyenne/écart-type).
-- Figures lisibles et référencées dans le texte.
-- Interprétation des résultats (pas seulement des chiffres).
+- [ ] Rejouer un sous-ensemble de tests pour vérifier la reproductibilité.
+- [ ] Vérifier que tous les tableaux/chiffres du rapport viennent de logs archivés.
+- [ ] Vérifier la cohérence des unités et légendes (distance, ms, itérations).
+- [ ] Vérifier orthographe, clarté, et conclusion.

@@ -208,7 +208,18 @@ public class HeuristicUtils {
         if ("2opt".equals(mode)) {
             return randomTwoOpt(copy, random);
         }
+        if ("intra".equals(mode)) {
+            return randomTwoOpt(copy, random); // Intra = only 2-opt (within routes)
+        }
+        if ("inter".equals(mode)) {
+            int pick = random.nextInt(2);
+            if (pick == 0) {
+                return randomRelocate(copy, random);
+            }
+            return randomSwap(copy, random);
+        }
 
+        // Mixed: all three
         int pick = random.nextInt(3);
         if (pick == 0) {
             return randomRelocate(copy, random);
@@ -227,7 +238,8 @@ public class HeuristicUtils {
         if ("2-opt".equals(t) || "two-opt".equals(t)) {
             return "2opt";
         }
-        if ("relocate".equals(t) || "exchange".equals(t) || "2opt".equals(t) || "mixed".equals(t)) {
+        if ("relocate".equals(t) || "exchange".equals(t) || "2opt".equals(t) || "mixed".equals(t) ||
+                "intra".equals(t) || "inter".equals(t)) {
             return t;
         }
         return "mixed";
@@ -316,5 +328,120 @@ public class HeuristicUtils {
             return -1;
         }
         return candidates.get(random.nextInt(candidates.size()));
+    }
+
+    /**
+     * Generate ALL possible neighbors for a given solution.
+     * Returns a list of all relocate, swap, and 2-opt moves.
+     */
+    public static List<Neighbor> getAllNeighbors(Solution base, String neighborhoodType) {
+        List<Neighbor> neighbors = new ArrayList<>();
+        if (base.routes.isEmpty()) {
+            return neighbors;
+        }
+
+        String mode = normalizeNeighborhoodType(neighborhoodType);
+
+        if ("intra".equals(mode)) {
+            // Intra = only 2-opt moves
+            generateAll2Opt(base, neighbors);
+        } else if ("inter".equals(mode)) {
+            // Inter = relocate + swap
+            generateAllRelocate(base, neighbors);
+            generateAllSwap(base, neighbors);
+        } else {
+            // Mixed or individual types: generate all
+            generateAllRelocate(base, neighbors);
+            generateAllSwap(base, neighbors);
+            generateAll2Opt(base, neighbors);
+        }
+
+        return neighbors;
+    }
+
+    private static void generateAllRelocate(Solution base, List<Neighbor> neighbors) {
+        List<List<Integer>> routes = base.routes;
+
+        for (int fromRoute = 0; fromRoute < routes.size(); fromRoute++) {
+            List<Integer> src = routes.get(fromRoute);
+            for (int fromPos = 0; fromPos < src.size(); fromPos++) {
+                int client = src.get(fromPos);
+
+                for (int toRoute = 0; toRoute < routes.size(); toRoute++) {
+                    if (fromRoute == toRoute) continue; // Skip same route
+
+                    List<Integer> dst = routes.get(toRoute);
+                    for (int toPos = 0; toPos <= dst.size(); toPos++) {
+                        Solution copy = base.deepCopy();
+                        List<Integer> srcCopy = copy.routes.get(fromRoute);
+                        List<Integer> dstCopy = copy.routes.get(toRoute);
+
+                        int relocClient = srcCopy.remove(fromPos);
+                        dstCopy.add(toPos, relocClient);
+                        copy.routes.removeIf(List::isEmpty);
+
+                        String move = "R:" + client + ":" + fromRoute + ":" + toRoute;
+                        neighbors.add(new Neighbor(copy, move));
+                    }
+                }
+            }
+        }
+    }
+
+    private static void generateAllSwap(Solution base, List<Neighbor> neighbors) {
+        List<List<Integer>> routes = base.routes;
+
+        for (int r1 = 0; r1 < routes.size(); r1++) {
+            for (int r2 = r1 + 1; r2 < routes.size(); r2++) {
+                List<Integer> a = routes.get(r1);
+                List<Integer> b = routes.get(r2);
+
+                for (int p1 = 0; p1 < a.size(); p1++) {
+                    for (int p2 = 0; p2 < b.size(); p2++) {
+                        Solution copy = base.deepCopy();
+                        List<Integer> aCopy = copy.routes.get(r1);
+                        List<Integer> bCopy = copy.routes.get(r2);
+
+                        int c1 = aCopy.get(p1);
+                        int c2 = bCopy.get(p2);
+                        aCopy.set(p1, c2);
+                        bCopy.set(p2, c1);
+
+                        String move = "S:" + c1 + ":" + c2;
+                        neighbors.add(new Neighbor(copy, move));
+                    }
+                }
+            }
+        }
+    }
+
+    private static void generateAll2Opt(Solution base, List<Neighbor> neighbors) {
+        List<List<Integer>> routes = base.routes;
+
+        for (int routeIndex = 0; routeIndex < routes.size(); routeIndex++) {
+            List<Integer> route = routes.get(routeIndex);
+            if (route.size() < 4) continue; // Skip routes with less than 4 clients
+
+            for (int i = 0; i < route.size() - 2; i++) {
+                for (int j = i + 2; j < route.size(); j++) {
+                    Solution copy = base.deepCopy();
+                    List<Integer> routeCopy = copy.routes.get(routeIndex);
+
+                    // Reverse the segment [i, j]
+                    int ii = i;
+                    int jj = j;
+                    while (ii < jj) {
+                        int tmp = routeCopy.get(ii);
+                        routeCopy.set(ii, routeCopy.get(jj));
+                        routeCopy.set(jj, tmp);
+                        ii++;
+                        jj--;
+                    }
+
+                    String move = "O:" + routeIndex + ":" + i + ":" + j;
+                    neighbors.add(new Neighbor(copy, move));
+                }
+            }
+        }
     }
 }

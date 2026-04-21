@@ -19,7 +19,6 @@ public class Main {
     private static final long DEFAULT_SEED = 42L;
     private static final double DEFAULT_PENALTY_WEIGHT = 1000.0;
     private static final int DEFAULT_MAX_VEHICLES = Integer.MAX_VALUE;
-    private static final boolean DEFAULT_SWEEP_VEHICLE_COUNTS = true;
     private static final String DEFAULT_INIT_STRATEGY = "greedy";
     private static final boolean DEFAULT_ESTIMATE_MIN_VEHICLES = true;
     private static final String DEFAULT_SA_NEIGHBORHOOD_TYPE = "mixed";
@@ -27,7 +26,6 @@ public class Main {
     private static final boolean DEFAULT_ENFORCE_TIME_WINDOWS = false;
     private static final double DEFAULT_INITIAL_TEMP = 2500.0;
     private static final double DEFAULT_COOLING_RATE = 0.9995;
-    private static final int DEFAULT_NEIGHBORHOOD_SIZE = 40;
     private static final int DEFAULT_TABU_TENURE = 25;
 
     public static void main(String[] args) throws Exception {
@@ -80,8 +78,6 @@ public class Main {
             maxVehicles = Integer.MAX_VALUE;
         }
 
-        boolean sweepVehicleCounts = true;
-
         String enforceDefault = boolToYesNo(config.enforceTimeWindows);
         System.out.print("Appliquer les fenêtres temporelles ? (oui/non) [" + enforceDefault + "]: ");
         boolean enforceTimeWindows = readLineOrDefault(scanner, enforceDefault).toLowerCase().startsWith("o");
@@ -103,17 +99,14 @@ public class Main {
         }
 
         // Paramètres Tabu
-        int neighborhoodSize = config.neighborhoodSize;
         int tabuTenure = config.tabuTenure;
         String neighborhoodType = HeuristicUtils.normalizeNeighborhoodType(config.neighborhoodType);
         if ("tabu".equals(algo) || "both".equals(algo)) {
             System.out.println();
             System.out.println("--- Paramètres Recherche Tabou ---");
-            System.out.print("Taille du voisinage [" + neighborhoodSize + "]: ");
-            neighborhoodSize = readIntOrDefault(scanner, neighborhoodSize);
             System.out.print("Taille de la liste tabu (tenure) [" + tabuTenure + "]: ");
             tabuTenure = readIntOrDefault(scanner, tabuTenure);
-            System.out.print("Type de voisinage (relocate/exchange/2opt/mixed) [" + neighborhoodType + "]: ");
+            System.out.print("Type de voisinage (relocate/exchange/2opt/intra/inter/mixed) [" + neighborhoodType + "]: ");
             neighborhoodType = HeuristicUtils
                     .normalizeNeighborhoodType(readLineOrDefault(scanner, neighborhoodType));
         }
@@ -127,12 +120,10 @@ public class Main {
                 initialStrategy,
                 estimateMinVehicles,
                 maxVehicles,
-                sweepVehicleCounts,
                 enforceTimeWindows,
                 initialTemp,
                 coolingRate,
                 saNeighborhoodType,
-                neighborhoodSize,
                 neighborhoodType,
                 tabuTenure));
 
@@ -144,57 +135,27 @@ public class Main {
         VrpInstance instance = parser.parse(Path.of(instancePath));
         System.out.println(instance.getStatistics());
 
-        if (estimateMinVehicles) {
-            System.out.println();
-            System.out.println("=== Estimation minimum véhicules ===");
-            System.out.println();
-
-            VehicleMinimizer.MinVehicleSummary summary = VehicleMinimizer.estimate(instance, penaltyWeight, seed);
-            System.out.printf("Borne inférieure (capacité): %d%n", summary.lowerBoundCapacity);
-            System.out.printf("Minimum faisable estimé sans fenêtres: %d%n", summary.minVehiclesNoTimeWindows);
-            System.out.printf("Minimum faisable estimé avec fenêtres: %d%n", summary.minVehiclesWithTimeWindows);
-            System.out.println();
-        }
         System.out.println();
-
         System.out.println("=== Résolution ===");
         System.out.println();
 
-        int maxVehiclesToTest = maxVehicles == Integer.MAX_VALUE
-                ? instance.clientCount()
-                : Math.min(maxVehicles, instance.clientCount());
-        if (maxVehiclesToTest <= 0) {
-            maxVehiclesToTest = instance.clientCount();
+        Evaluator evaluator = new Evaluator(instance, penaltyWeight, enforceTimeWindows, maxVehicles);
+
+        Solution initial;
+        if ("random".equals(initialStrategy)) {
+            initial = HeuristicUtils.buildInitialRandom(instance, evaluator, seed);
+        } else {
+            initial = HeuristicUtils.buildInitialGreedy(instance, evaluator);
         }
+        Evaluator.Eval initEval = evaluator.evaluate(initial);
+        System.out.printf("Solution initiale: obj=%.2f dist=%.2f timeV=%.2f capV=%.2f vehV=%.2f routes=%d%n",
+                initEval.objective, initEval.distance, initEval.timeViolation, initEval.capacityViolation,
+                initEval.vehicleViolation,
+                initial.routes.size());
+        System.out.println("Stratégie initiale: " + initialStrategy);
+        System.out.println();
 
-        int firstVehicleCount = sweepVehicleCounts ? 1 : maxVehiclesToTest;
-        int lastVehicleCount = maxVehiclesToTest;
-
-        List<RunOutcome> outcomes = new ArrayList<>();
-        RunOutcome bestOverall = null;
-
-        for (int vehicleLimit = firstVehicleCount; vehicleLimit <= lastVehicleCount; vehicleLimit++) {
-            Evaluator evaluator = new Evaluator(instance, penaltyWeight, enforceTimeWindows, vehicleLimit);
-
-            long initSeed = seed + 1_000_003L * vehicleLimit;
-            Solution initial;
-            if ("random".equals(initialStrategy)) {
-                initial = HeuristicUtils.buildInitialRandom(instance, evaluator, initSeed);
-            } else {
-                initial = HeuristicUtils.buildInitialGreedy(instance, evaluator);
-            }
-
-            Evaluator.Eval initEval = evaluator.evaluate(initial);
-            System.out.printf(
-                    "k=%d | Initiale: obj=%.2f dist=%.2f timeV=%.2f capV=%.2f vehV=%.2f routes=%d | faisable=%s%n",
-                    vehicleLimit,
-                    initEval.objective,
-                    initEval.distance,
-                    initEval.timeViolation,
-                    initEval.capacityViolation,
-                    initEval.vehicleViolation,
-                    initial.routes.size(),
-                    boolToYesNo(initEval.feasible()));
+        List<SearchResult> results = new ArrayList<>();
 
             if ("sa".equals(algo) || "both".equals(algo)) {
                 SimulatedAnnealingSolver sa = new SimulatedAnnealingSolver();
@@ -208,17 +169,11 @@ public class Main {
                 }
             }
 
-            if ("tabu".equals(algo) || "both".equals(algo)) {
-                TabuSearchSolver tabu = new TabuSearchSolver();
-                SearchResult r = tabu.solve(instance, initial, evaluator, iterations, neighborhoodSize, tabuTenure,
-                        neighborhoodType, seed + 7L + 31L * vehicleLimit);
-                r.parameters.put("vehicleLimit", String.valueOf(vehicleLimit));
-                RunOutcome outcome = new RunOutcome(vehicleLimit, r);
-                outcomes.add(outcome);
-                if (isBetterOverall(outcome, bestOverall)) {
-                    bestOverall = outcome;
-                }
-            }
+        if ("tabu".equals(algo) || "both".equals(algo)) {
+            TabuSearchSolver tabu = new TabuSearchSolver();
+            SearchResult r = tabu.solve(instance, initial, evaluator, iterations, neighborhoodSize, tabuTenure,
+                    neighborhoodType, seed + 7);
+            results.add(r);
         }
 
         if (outcomes.isEmpty()) {
@@ -245,7 +200,7 @@ public class Main {
             Exporter.exportRoutesPng(instance, r.bestSolution, routesPng,
                     "Tournées - " + r.algorithm + " - " + instance.name);
             Exporter.appendExecutionLogCsv(executionLogCsv, instance.name, r, penaltyWeight, enforceTimeWindows,
-                    outcome.vehicleLimit);
+                    maxVehicles);
 
             System.out.printf(
                     "[%s][k=%d] obj=%.2f dist=%.2f timeV=%.2f capV=%.2f vehV=%.2f routes=%d | faisable=%s | évaluations=%d temps=%dms%n",
@@ -427,12 +382,10 @@ public class Main {
                 DEFAULT_INIT_STRATEGY,
                 DEFAULT_ESTIMATE_MIN_VEHICLES,
                 DEFAULT_MAX_VEHICLES,
-                DEFAULT_SWEEP_VEHICLE_COUNTS,
                 DEFAULT_ENFORCE_TIME_WINDOWS,
                 DEFAULT_INITIAL_TEMP,
                 DEFAULT_COOLING_RATE,
                 DEFAULT_SA_NEIGHBORHOOD_TYPE,
-                DEFAULT_NEIGHBORHOOD_SIZE,
                 DEFAULT_NEIGHBORHOOD_TYPE,
                 DEFAULT_TABU_TENURE);
     }
@@ -460,12 +413,10 @@ public class Main {
                 p.getProperty("initialStrategy", defaults.initialStrategy),
                 parseBooleanOrDefault(p.getProperty("estimateMinVehicles"), defaults.estimateMinVehicles),
                 parseIntOrDefault(p.getProperty("maxVehicles"), defaults.maxVehicles),
-                parseBooleanOrDefault(p.getProperty("sweepVehicleCounts"), defaults.sweepVehicleCounts),
                 parseBooleanOrDefault(p.getProperty("enforceTimeWindows"), defaults.enforceTimeWindows),
                 parseDoubleOrDefault(p.getProperty("initialTemp"), defaults.initialTemp),
                 parseDoubleOrDefault(p.getProperty("coolingRate"), defaults.coolingRate),
                 p.getProperty("saNeighborhoodType", defaults.saNeighborhoodType),
-                parseIntOrDefault(p.getProperty("neighborhoodSize"), defaults.neighborhoodSize),
                 p.getProperty("neighborhoodType", defaults.neighborhoodType),
                 parseIntOrDefault(p.getProperty("tabuTenure"), defaults.tabuTenure));
     }
@@ -480,12 +431,10 @@ public class Main {
         p.setProperty("initialStrategy", config.initialStrategy);
         p.setProperty("estimateMinVehicles", String.valueOf(config.estimateMinVehicles));
         p.setProperty("maxVehicles", String.valueOf(config.maxVehicles));
-        p.setProperty("sweepVehicleCounts", String.valueOf(config.sweepVehicleCounts));
         p.setProperty("enforceTimeWindows", String.valueOf(config.enforceTimeWindows));
         p.setProperty("initialTemp", String.valueOf(config.initialTemp));
         p.setProperty("coolingRate", String.valueOf(config.coolingRate));
         p.setProperty("saNeighborhoodType", config.saNeighborhoodType);
-        p.setProperty("neighborhoodSize", String.valueOf(config.neighborhoodSize));
         p.setProperty("neighborhoodType", config.neighborhoodType);
         p.setProperty("tabuTenure", String.valueOf(config.tabuTenure));
 
@@ -545,12 +494,10 @@ public class Main {
         final String initialStrategy;
         final boolean estimateMinVehicles;
         final int maxVehicles;
-        final boolean sweepVehicleCounts;
         final boolean enforceTimeWindows;
         final double initialTemp;
         final double coolingRate;
         final String saNeighborhoodType;
-        final int neighborhoodSize;
         final String neighborhoodType;
         final int tabuTenure;
 
@@ -563,12 +510,10 @@ public class Main {
                 String initialStrategy,
                 boolean estimateMinVehicles,
                 int maxVehicles,
-                boolean sweepVehicleCounts,
                 boolean enforceTimeWindows,
                 double initialTemp,
                 double coolingRate,
                 String saNeighborhoodType,
-                int neighborhoodSize,
                 String neighborhoodType,
                 int tabuTenure) {
             this.instancePath = instancePath;
@@ -579,12 +524,10 @@ public class Main {
             this.initialStrategy = initialStrategy;
             this.estimateMinVehicles = estimateMinVehicles;
             this.maxVehicles = maxVehicles;
-            this.sweepVehicleCounts = sweepVehicleCounts;
             this.enforceTimeWindows = enforceTimeWindows;
             this.initialTemp = initialTemp;
             this.coolingRate = coolingRate;
             this.saNeighborhoodType = HeuristicUtils.normalizeNeighborhoodType(saNeighborhoodType);
-            this.neighborhoodSize = neighborhoodSize;
             this.neighborhoodType = HeuristicUtils.normalizeNeighborhoodType(neighborhoodType);
             this.tabuTenure = tabuTenure;
         }

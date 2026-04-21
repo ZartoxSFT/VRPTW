@@ -1,0 +1,8 @@
+non
+data/data101.vrp
+sa
+1000
+42
+1000.0
+non
+intra

@@ -58,11 +58,8 @@ public class Main {
         System.out.print("Facteur de pénalité [" + config.penaltyWeight + "]: ");
         double penaltyWeight = readDoubleOrDefault(scanner, config.penaltyWeight);
 
-        System.out.print("Génération solution initiale (greedy/random) [" + config.initialStrategy + "]: ");
-        String initialStrategy = readLineOrDefault(scanner, config.initialStrategy).toLowerCase();
-        if (!"random".equals(initialStrategy)) {
-            initialStrategy = "greedy";
-        }
+        String initialStrategy = DEFAULT_INIT_STRATEGY;
+        System.out.println("Génération solution initiale: random (forcée)");
 
         String estimateDefault = boolToYesNo(config.estimateMinVehicles);
         System.out
@@ -162,18 +159,13 @@ public class Main {
             System.out.println("--- Résolution avec limite de véhicules: " + vehicleLimit + " ---");
             Evaluator evaluator = new Evaluator(instance, penaltyWeight, enforceTimeWindows, vehicleLimit);
 
-            Solution initial;
-            if ("random".equals(initialStrategy)) {
-                initial = HeuristicUtils.buildInitialRandom(instance, evaluator, seed);
-            } else {
-                initial = HeuristicUtils.buildInitialGreedy(instance, evaluator);
-            }
+            Solution initial = HeuristicUtils.buildInitialRandom(instance, evaluator, seed);
             Evaluator.Eval initEval = evaluator.evaluate(initial);
             System.out.printf("Solution initiale: obj=%.2f dist=%.2f timeV=%.2f capV=%.2f vehV=%.2f routes=%d%n",
                     initEval.objective, initEval.distance, initEval.timeViolation, initEval.capacityViolation,
                     initEval.vehicleViolation,
                     initial.routes.size());
-            System.out.println("Stratégie initiale: " + initialStrategy);
+            System.out.println("Stratégie initiale: random");
             System.out.println();
 
             if ("sa".equals(algo) || "both".equals(algo)) {

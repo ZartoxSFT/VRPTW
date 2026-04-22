@@ -14,7 +14,8 @@ public class SimulatedAnnealingSolver {
             int iterations,
             double initialTemp,
             double coolingRate,
-            String neighborhoodType,
+            String interNeighborhoodType,
+            String intraNeighborhoodType,
             long seed) {
         long t0 = System.currentTimeMillis();
         Random random = new Random(seed);
@@ -35,7 +36,11 @@ public class SimulatedAnnealingSolver {
         neighborhoodGeneratedCounts.put("noop", 0);
 
         for (int i = 0; i < iterations; i++) {
-            HeuristicUtils.Neighbor neighbor = HeuristicUtils.randomNeighbor(current, random, neighborhoodType);
+            HeuristicUtils.Neighbor neighbor = HeuristicUtils.randomNeighbor(
+                    current,
+                    random,
+                    interNeighborhoodType,
+                    intraNeighborhoodType);
             incrementMoveCount(neighborhoodGeneratedCounts, neighbor.moveKey);
             Solution candidate = neighbor.solution;
             Evaluator.Eval candidateEval = evaluator.evaluate(candidate);
@@ -65,7 +70,8 @@ public class SimulatedAnnealingSolver {
         params.put("seed", String.valueOf(seed));
         params.put("initialTemp", String.valueOf(initialTemp));
         params.put("coolingRate", String.valueOf(coolingRate));
-        params.put("neighborhoodType", HeuristicUtils.normalizeNeighborhoodType(neighborhoodType));
+        params.put("interNeighborhoodType", HeuristicUtils.normalizeNeighborhoodType(interNeighborhoodType));
+        params.put("intraNeighborhoodType", HeuristicUtils.normalizeNeighborhoodType(intraNeighborhoodType));
 
         return new SearchResult("sa", best, bestEval, history, dt, solutionsEvaluated,
                 neighborhoodGeneratedCounts, params);

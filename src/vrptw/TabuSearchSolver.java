@@ -17,7 +17,8 @@ public class TabuSearchSolver {
             Evaluator evaluator,
             int iterations,
             int tabuTenure,
-            String neighborhoodType,
+            String interNeighborhoodType,
+            String intraNeighborhoodType,
             long seed) {
         long t0 = System.currentTimeMillis();
         Random random = new Random(seed);
@@ -44,13 +45,16 @@ public class TabuSearchSolver {
             String bestMove = null;
 
             // Generate and evaluate ALL neighbors
-            List<HeuristicUtils.Neighbor> allNeighbors = HeuristicUtils.getAllNeighbors(current, neighborhoodType);
+            List<HeuristicUtils.Neighbor> allNeighbors = HeuristicUtils.getAllNeighbors(
+                    current,
+                    interNeighborhoodType,
+                    intraNeighborhoodType);
 
             for (HeuristicUtils.Neighbor n : allNeighbors) {
                 incrementMoveCount(neighborhoodGeneratedCounts, n.moveKey);
                 Evaluator.Eval ev = evaluator.evaluate(n.solution);
                 solutionsEvaluated++;
-                
+
                 boolean isTabu = tabuSet.contains(n.moveKey);
                 boolean aspiration = ev.objective < bestEval.objective;
                 if (isTabu && !aspiration) {
@@ -66,7 +70,11 @@ public class TabuSearchSolver {
 
             if (bestCandidate == null) {
                 // Fallback: take a random neighbor if no improvement found
-                HeuristicUtils.Neighbor fallback = HeuristicUtils.randomNeighbor(current, random, neighborhoodType);
+                HeuristicUtils.Neighbor fallback = HeuristicUtils.randomNeighbor(
+                        current,
+                        random,
+                        interNeighborhoodType,
+                        intraNeighborhoodType);
                 incrementMoveCount(neighborhoodGeneratedCounts, fallback.moveKey);
                 bestCandidate = fallback.solution;
                 bestCandidateEval = evaluator.evaluate(bestCandidate);
@@ -99,7 +107,8 @@ public class TabuSearchSolver {
         params.put("iterations", String.valueOf(iterations));
         params.put("seed", String.valueOf(seed));
         params.put("tabuTenure", String.valueOf(tabuTenure));
-        params.put("neighborhoodType", HeuristicUtils.normalizeNeighborhoodType(neighborhoodType));
+        params.put("interNeighborhoodType", HeuristicUtils.normalizeNeighborhoodType(interNeighborhoodType));
+        params.put("intraNeighborhoodType", HeuristicUtils.normalizeNeighborhoodType(intraNeighborhoodType));
 
         return new SearchResult("tabu", best, bestEval, history, dt, solutionsEvaluated,
                 neighborhoodGeneratedCounts, params);

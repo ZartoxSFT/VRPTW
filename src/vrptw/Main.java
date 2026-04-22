@@ -21,8 +21,9 @@ public class Main {
     private static final int DEFAULT_MAX_VEHICLES = Integer.MAX_VALUE;
     private static final String DEFAULT_INIT_STRATEGY = "random";
     private static final boolean DEFAULT_ESTIMATE_MIN_VEHICLES = true;
-    private static final String DEFAULT_SA_NEIGHBORHOOD_TYPE = "relocate";
-    private static final String DEFAULT_NEIGHBORHOOD_TYPE = "relocate";
+    private static final String DEFAULT_NEIGHBORHOOD_FAMILY = "inter";
+    private static final String DEFAULT_INTER_NEIGHBORHOOD_TYPE = "relocate";
+    private static final String DEFAULT_INTRA_NEIGHBORHOOD_TYPE = "2opt";
     private static final boolean DEFAULT_ENFORCE_TIME_WINDOWS = true;
     private static final double DEFAULT_INITIAL_TEMP = 2500.0;
     private static final double DEFAULT_COOLING_RATE = 0.9995;
@@ -79,10 +80,27 @@ public class Main {
         System.out.print("Appliquer les fenêtres temporelles ? (oui/non) [" + enforceDefault + "]: ");
         boolean enforceTimeWindows = readLineOrDefault(scanner, enforceDefault).toLowerCase().startsWith("o");
 
+        String neighborhoodFamily = normalizeNeighborhoodFamily(config.neighborhoodFamily);
+        System.out.print("Famille de voisinage (inter/intra) [" + neighborhoodFamily + "]: ");
+        neighborhoodFamily = normalizeNeighborhoodFamily(readLineOrDefault(scanner, neighborhoodFamily));
+
+        String interNeighborhoodType = null;
+        String intraNeighborhoodType = null;
+        if ("inter".equals(neighborhoodFamily)) {
+            interNeighborhoodType = normalizeInterNeighborhoodType(config.interNeighborhoodType);
+            System.out.print(
+                    "Type de voisinage inter-groupe (relocate/exchange) [" + interNeighborhoodType + "]: ");
+            interNeighborhoodType = normalizeInterNeighborhoodType(readLineOrDefault(scanner, interNeighborhoodType));
+        } else {
+            intraNeighborhoodType = normalizeIntraNeighborhoodType(config.intraNeighborhoodType);
+            System.out.print(
+                    "Type de voisinage intra-groupe (2opt) [" + intraNeighborhoodType + "]: ");
+            intraNeighborhoodType = normalizeIntraNeighborhoodType(readLineOrDefault(scanner, intraNeighborhoodType));
+        }
+
         // Paramètres SA
         double initialTemp = config.initialTemp;
         double coolingRate = config.coolingRate;
-        String saNeighborhoodType = HeuristicUtils.normalizeNeighborhoodType(config.saNeighborhoodType);
         if ("sa".equals(algo) || "both".equals(algo)) {
             System.out.println();
             System.out.println("--- Paramètres Recuit Simulé ---");
@@ -90,23 +108,15 @@ public class Main {
             initialTemp = readDoubleOrDefault(scanner, initialTemp);
             System.out.print("Taux de refroidissement (cooling rate) [" + coolingRate + "]: ");
             coolingRate = readDoubleOrDefault(scanner, coolingRate);
-            System.out.print("Type de voisinage SA (relocate/exchange/2opt/mixed) [" + saNeighborhoodType + "]: ");
-            saNeighborhoodType = HeuristicUtils
-                    .normalizeNeighborhoodType(readLineOrDefault(scanner, saNeighborhoodType));
         }
 
         // Paramètres Tabu
         int tabuTenure = config.tabuTenure;
-        String neighborhoodType = HeuristicUtils.normalizeNeighborhoodType(config.neighborhoodType);
         if ("tabu".equals(algo) || "both".equals(algo)) {
             System.out.println();
             System.out.println("--- Paramètres Recherche Tabou ---");
             System.out.print("Taille de la liste tabu (tenure) [" + tabuTenure + "]: ");
             tabuTenure = readIntOrDefault(scanner, tabuTenure);
-            System.out
-                    .print("Type de voisinage (relocate/exchange/2opt/intra/inter/mixed) [" + neighborhoodType + "]: ");
-            neighborhoodType = HeuristicUtils
-                    .normalizeNeighborhoodType(readLineOrDefault(scanner, neighborhoodType));
         }
 
         saveRunConfig(new RunConfig(
@@ -119,10 +129,11 @@ public class Main {
                 estimateMinVehicles,
                 maxVehicles,
                 enforceTimeWindows,
+                neighborhoodFamily,
                 initialTemp,
                 coolingRate,
-                saNeighborhoodType,
-                neighborhoodType,
+                interNeighborhoodType,
+                intraNeighborhoodType,
                 tabuTenure));
 
         System.out.println();
@@ -171,7 +182,9 @@ public class Main {
             if ("sa".equals(algo) || "both".equals(algo)) {
                 SimulatedAnnealingSolver sa = new SimulatedAnnealingSolver();
                 SearchResult r = sa.solve(instance, initial, evaluator, iterations, initialTemp, coolingRate,
-                        saNeighborhoodType, seed + 31L * vehicleLimit);
+                        interNeighborhoodType,
+                        intraNeighborhoodType,
+                        seed + 31L * vehicleLimit);
                 r.parameters.put("vehicleLimit", String.valueOf(vehicleLimit));
                 RunOutcome outcome = new RunOutcome(vehicleLimit, r);
                 outcomes.add(outcome);
@@ -183,7 +196,9 @@ public class Main {
             if ("tabu".equals(algo) || "both".equals(algo)) {
                 TabuSearchSolver tabu = new TabuSearchSolver();
                 SearchResult r = tabu.solve(instance, initial, evaluator, iterations, tabuTenure,
-                        neighborhoodType, seed + 7L * vehicleLimit);
+                        interNeighborhoodType,
+                        intraNeighborhoodType,
+                        seed + 7L * vehicleLimit);
                 r.parameters.put("vehicleLimit", String.valueOf(vehicleLimit));
                 RunOutcome outcome = new RunOutcome(vehicleLimit, r);
                 outcomes.add(outcome);
@@ -400,10 +415,11 @@ public class Main {
                 DEFAULT_ESTIMATE_MIN_VEHICLES,
                 DEFAULT_MAX_VEHICLES,
                 DEFAULT_ENFORCE_TIME_WINDOWS,
+                DEFAULT_NEIGHBORHOOD_FAMILY,
                 DEFAULT_INITIAL_TEMP,
                 DEFAULT_COOLING_RATE,
-                DEFAULT_SA_NEIGHBORHOOD_TYPE,
-                DEFAULT_NEIGHBORHOOD_TYPE,
+                DEFAULT_INTER_NEIGHBORHOOD_TYPE,
+                DEFAULT_INTRA_NEIGHBORHOOD_TYPE,
                 DEFAULT_TABU_TENURE);
     }
 
@@ -431,10 +447,15 @@ public class Main {
                 parseBooleanOrDefault(p.getProperty("estimateMinVehicles"), defaults.estimateMinVehicles),
                 parseIntOrDefault(p.getProperty("maxVehicles"), defaults.maxVehicles),
                 parseBooleanOrDefault(p.getProperty("enforceTimeWindows"), defaults.enforceTimeWindows),
+                p.getProperty("neighborhoodFamily", defaults.neighborhoodFamily),
                 parseDoubleOrDefault(p.getProperty("initialTemp"), defaults.initialTemp),
                 parseDoubleOrDefault(p.getProperty("coolingRate"), defaults.coolingRate),
-                p.getProperty("saNeighborhoodType", defaults.saNeighborhoodType),
-                p.getProperty("neighborhoodType", defaults.neighborhoodType),
+                p.getProperty("interNeighborhoodType",
+                        p.getProperty("neighborhoodType",
+                                p.getProperty("saNeighborhoodType", defaults.interNeighborhoodType))),
+                p.getProperty("intraNeighborhoodType",
+                        p.getProperty("neighborhoodType",
+                                p.getProperty("saNeighborhoodType", defaults.intraNeighborhoodType))),
                 parseIntOrDefault(p.getProperty("tabuTenure"), defaults.tabuTenure));
     }
 
@@ -449,10 +470,13 @@ public class Main {
         p.setProperty("estimateMinVehicles", String.valueOf(config.estimateMinVehicles));
         p.setProperty("maxVehicles", String.valueOf(config.maxVehicles));
         p.setProperty("enforceTimeWindows", String.valueOf(config.enforceTimeWindows));
+        p.setProperty("neighborhoodFamily", config.neighborhoodFamily);
         p.setProperty("initialTemp", String.valueOf(config.initialTemp));
         p.setProperty("coolingRate", String.valueOf(config.coolingRate));
-        p.setProperty("saNeighborhoodType", config.saNeighborhoodType);
-        p.setProperty("neighborhoodType", config.neighborhoodType);
+        p.setProperty("interNeighborhoodType",
+                config.interNeighborhoodType == null ? "" : config.interNeighborhoodType);
+        p.setProperty("intraNeighborhoodType",
+                config.intraNeighborhoodType == null ? "" : config.intraNeighborhoodType);
         p.setProperty("tabuTenure", String.valueOf(config.tabuTenure));
 
         try (OutputStream out = Files.newOutputStream(LAST_CONFIG_PATH)) {
@@ -502,6 +526,51 @@ public class Main {
         return Boolean.parseBoolean(value.trim());
     }
 
+    private static String normalizeNeighborhoodFamily(String family) {
+        if (family == null) {
+            return DEFAULT_NEIGHBORHOOD_FAMILY;
+        }
+        String t = family.trim().toLowerCase();
+        if (t.isEmpty()) {
+            return DEFAULT_NEIGHBORHOOD_FAMILY;
+        }
+        if ("inter".equals(t) || "intra".equals(t)) {
+            return t;
+        }
+        return DEFAULT_NEIGHBORHOOD_FAMILY;
+    }
+
+    private static String normalizeInterNeighborhoodType(String value) {
+        if (value == null || value.isBlank()) {
+            return DEFAULT_INTER_NEIGHBORHOOD_TYPE;
+        }
+        String t = value.trim().toLowerCase();
+        if ("mixed".equals(t)) {
+            return DEFAULT_INTER_NEIGHBORHOOD_TYPE;
+        }
+        if ("relocate".equals(t) || "exchange".equals(t)) {
+            return t;
+        }
+        return DEFAULT_INTER_NEIGHBORHOOD_TYPE;
+    }
+
+    private static String normalizeIntraNeighborhoodType(String value) {
+        if (value == null || value.isBlank()) {
+            return DEFAULT_INTRA_NEIGHBORHOOD_TYPE;
+        }
+        String t = value.trim().toLowerCase();
+        if ("2-opt".equals(t) || "two-opt".equals(t)) {
+            return "2opt";
+        }
+        if ("mixed".equals(t)) {
+            return DEFAULT_INTRA_NEIGHBORHOOD_TYPE;
+        }
+        if ("2opt".equals(t)) {
+            return t;
+        }
+        return DEFAULT_INTRA_NEIGHBORHOOD_TYPE;
+    }
+
     private static class RunConfig {
         final String instancePath;
         final String algo;
@@ -512,10 +581,11 @@ public class Main {
         final boolean estimateMinVehicles;
         final int maxVehicles;
         final boolean enforceTimeWindows;
+        final String neighborhoodFamily;
         final double initialTemp;
         final double coolingRate;
-        final String saNeighborhoodType;
-        final String neighborhoodType;
+        final String interNeighborhoodType;
+        final String intraNeighborhoodType;
         final int tabuTenure;
 
         RunConfig(
@@ -528,10 +598,11 @@ public class Main {
                 boolean estimateMinVehicles,
                 int maxVehicles,
                 boolean enforceTimeWindows,
+                String neighborhoodFamily,
                 double initialTemp,
                 double coolingRate,
-                String saNeighborhoodType,
-                String neighborhoodType,
+                String interNeighborhoodType,
+                String intraNeighborhoodType,
                 int tabuTenure) {
             this.instancePath = instancePath;
             this.algo = algo;
@@ -542,10 +613,13 @@ public class Main {
             this.estimateMinVehicles = estimateMinVehicles;
             this.maxVehicles = maxVehicles;
             this.enforceTimeWindows = enforceTimeWindows;
+            this.neighborhoodFamily = normalizeNeighborhoodFamily(neighborhoodFamily);
             this.initialTemp = initialTemp;
             this.coolingRate = coolingRate;
-            this.saNeighborhoodType = HeuristicUtils.normalizeNeighborhoodType(saNeighborhoodType);
-            this.neighborhoodType = HeuristicUtils.normalizeNeighborhoodType(neighborhoodType);
+            this.interNeighborhoodType = (interNeighborhoodType == null || interNeighborhoodType.isBlank()) ? null
+                    : normalizeInterNeighborhoodType(interNeighborhoodType);
+            this.intraNeighborhoodType = (intraNeighborhoodType == null || intraNeighborhoodType.isBlank()) ? null
+                    : normalizeIntraNeighborhoodType(intraNeighborhoodType);
             this.tabuTenure = tabuTenure;
         }
     }

@@ -189,60 +189,85 @@ public class HeuristicUtils {
     }
 
     public static Neighbor randomNeighbor(Solution base, Random random) {
-        return randomNeighbor(base, random, "mixed");
+        return randomNeighbor(base, random, "relocate", "2opt");
     }
 
     public static Neighbor randomNeighbor(Solution base, Random random, String neighborhoodType) {
+        return randomNeighbor(base, random, neighborhoodType, neighborhoodType);
+    }
+
+    public static Neighbor randomNeighbor(
+            Solution base,
+            Random random,
+            String interNeighborhoodType,
+            String intraNeighborhoodType) {
         if (base.routes.isEmpty()) {
             return new Neighbor(base.deepCopy(), "noop");
         }
 
         Solution copy = base.deepCopy();
-        String mode = normalizeNeighborhoodType(neighborhoodType);
+        List<String> allowedModes = collectAllowedNeighborModes(interNeighborhoodType, intraNeighborhoodType);
+        if (allowedModes.isEmpty()) {
+            return new Neighbor(copy, "noop");
+        }
+
+        String mode = allowedModes.get(random.nextInt(allowedModes.size()));
         if ("relocate".equals(mode)) {
             return randomRelocate(copy, random);
         }
         if ("exchange".equals(mode)) {
             return randomSwap(copy, random);
         }
-        if ("2opt".equals(mode)) {
-            return randomTwoOpt(copy, random);
+        return randomTwoOpt(copy, random);
+    }
+
+    private static String normalizeNeighborhoodTypeIfPresent(String neighborhoodType) {
+        if (neighborhoodType == null || neighborhoodType.trim().isEmpty()) {
+            return null;
         }
-        if ("intra".equals(mode)) {
-            return randomTwoOpt(copy, random); // Intra = only 2-opt (within routes)
-        }
-        if ("inter".equals(mode)) {
-            int pick = random.nextInt(2);
-            if (pick == 0) {
-                return randomRelocate(copy, random);
+        return normalizeNeighborhoodType(neighborhoodType);
+    }
+
+    private static List<String> collectAllowedNeighborModes(String interNeighborhoodType,
+            String intraNeighborhoodType) {
+        List<String> allowedModes = new ArrayList<>();
+
+        String interMode = normalizeNeighborhoodTypeIfPresent(interNeighborhoodType);
+        if (interMode != null) {
+            if ("inter".equals(interMode) || "relocate".equals(interMode)) {
+                allowedModes.add("relocate");
             }
-            return randomSwap(copy, random);
+            if ("inter".equals(interMode) || "exchange".equals(interMode)) {
+                allowedModes.add("exchange");
+            }
         }
 
-        // Mixed: all three
-        int pick = random.nextInt(3);
-        if (pick == 0) {
-            return randomRelocate(copy, random);
+        String intraMode = normalizeNeighborhoodTypeIfPresent(intraNeighborhoodType);
+        if (intraMode != null) {
+            if ("intra".equals(intraMode) || "2opt".equals(intraMode)) {
+                allowedModes.add("2opt");
+            }
         }
-        if (pick == 1) {
-            return randomSwap(copy, random);
-        }
-        return randomTwoOpt(copy, random);
+
+        return allowedModes;
     }
 
     public static String normalizeNeighborhoodType(String neighborhoodType) {
         if (neighborhoodType == null) {
-            return "mixed";
+            return "relocate";
         }
         String t = neighborhoodType.trim().toLowerCase();
         if ("2-opt".equals(t) || "two-opt".equals(t)) {
             return "2opt";
         }
-        if ("relocate".equals(t) || "exchange".equals(t) || "2opt".equals(t) || "mixed".equals(t) ||
+        if ("mixed".equals(t)) {
+            return "relocate";
+        }
+        if ("relocate".equals(t) || "exchange".equals(t) || "2opt".equals(t) ||
                 "intra".equals(t) || "inter".equals(t)) {
             return t;
         }
-        return "mixed";
+        return "relocate";
     }
 
     private static Neighbor randomRelocate(Solution s, Random random) {
@@ -335,22 +360,42 @@ public class HeuristicUtils {
      * Returns a list of all relocate, swap, and 2-opt moves.
      */
     public static List<Neighbor> getAllNeighbors(Solution base, String neighborhoodType) {
+        return getAllNeighbors(base, neighborhoodType, neighborhoodType);
+    }
+
+    public static List<Neighbor> getAllNeighbors(
+            Solution base,
+            String interNeighborhoodType,
+            String intraNeighborhoodType) {
         List<Neighbor> neighbors = new ArrayList<>();
         if (base.routes.isEmpty()) {
             return neighbors;
         }
 
-        String mode = normalizeNeighborhoodType(neighborhoodType);
+        String interMode = normalizeNeighborhoodTypeIfPresent(interNeighborhoodType);
+        String intraMode = normalizeNeighborhoodTypeIfPresent(intraNeighborhoodType);
 
-        if ("intra".equals(mode)) {
-            // Intra = only 2-opt moves
-            generateAll2Opt(base, neighbors);
-        } else if ("inter".equals(mode)) {
-            // Inter = relocate + swap
+        boolean allowRelocate = interMode != null
+                && ("inter".equals(interMode)
+                        || "relocate".equals(interMode));
+        boolean allowSwap = interMode != null
+                && ("inter".equals(interMode)
+                        || "exchange".equals(interMode));
+        boolean allowTwoOpt = intraMode != null
+                && ("intra".equals(intraMode)
+                        || "2opt".equals(intraMode));
+
+        if (allowRelocate) {
             generateAllRelocate(base, neighbors);
+        }
+        if (allowSwap) {
             generateAllSwap(base, neighbors);
-        } else {
-            // Mixed or individual types: generate all
+        }
+        if (allowTwoOpt) {
+            generateAll2Opt(base, neighbors);
+        }
+
+        if (neighbors.isEmpty()) {
             generateAllRelocate(base, neighbors);
             generateAllSwap(base, neighbors);
             generateAll2Opt(base, neighbors);
@@ -368,7 +413,8 @@ public class HeuristicUtils {
                 int client = src.get(fromPos);
 
                 for (int toRoute = 0; toRoute < routes.size(); toRoute++) {
-                    if (fromRoute == toRoute) continue; // Skip same route
+                    if (fromRoute == toRoute)
+                        continue; // Skip same route
 
                     List<Integer> dst = routes.get(toRoute);
                     for (int toPos = 0; toPos <= dst.size(); toPos++) {
@@ -420,7 +466,8 @@ public class HeuristicUtils {
 
         for (int routeIndex = 0; routeIndex < routes.size(); routeIndex++) {
             List<Integer> route = routes.get(routeIndex);
-            if (route.size() < 4) continue; // Skip routes with less than 4 clients
+            if (route.size() < 4)
+                continue; // Skip routes with less than 4 clients
 
             for (int i = 0; i < route.size() - 2; i++) {
                 for (int j = i + 2; j < route.size(); j++) {

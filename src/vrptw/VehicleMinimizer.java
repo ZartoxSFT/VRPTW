@@ -47,13 +47,28 @@ public class VehicleMinimizer {
                     return maxVehicles;
                 }
 
-                SearchResult tabuResult = tabu.solve(instance, randomInit, evaluator, 2500, 20, "mixed",
+                SearchResult tabuResult = tabu.solve(
+                        instance,
+                        randomInit,
+                        evaluator,
+                        2500,
+                        20,
+                        "inter",
+                        "intra",
                         attemptSeed + 1);
                 if (tabuResult.bestEval.feasible()) {
                     return maxVehicles;
                 }
 
-                SearchResult saResult = sa.solve(instance, greedyInit, evaluator, 2500, 2000.0, 0.9993, "mixed",
+                SearchResult saResult = sa.solve(
+                        instance,
+                        greedyInit,
+                        evaluator,
+                        2500,
+                        2000.0,
+                        0.9993,
+                        "inter",
+                        "intra",
                         attemptSeed + 2);
                 if (saResult.bestEval.feasible()) {
                     return maxVehicles;

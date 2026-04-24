@@ -1,0 +1,11 @@
+instance,clients,capacity,total_demand,capacity_lower_bound
+data101.vrp,100,200.0,1458.0,8
+data102.vrp,100,200.0,1458.0,8
+data1101.vrp,100,200.0,1724.0,9
+data1102.vrp,100,200.0,1724.0,9
+data111.vrp,100,200.0,1458.0,8
+data112.vrp,100,200.0,1458.0,8
+data1201.vrp,100,1000.0,1724.0,2
+data1202.vrp,100,1000.0,1724.0,2
+data201.vrp,100,1000.0,1458.0,2
+data202.vrp,100,1000.0,1458.0,2

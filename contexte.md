@@ -158,13 +158,13 @@ Questions à traiter explicitement:
 
 - Si convergence trop lente: augmenter T0 ou ralentir légèrement le refroidissement.
 - Si exploration trop aléatoire et faible qualité finale: baisser T0 ou accélérer le refroidissement.
-- Si bloqué tôt: tester voisinage mixed.
+- Si bloqué tôt: comparer `relocate` et `exchange` (famille inter), puis vérifier le niveau intra avec `2opt`.
 
 ### Tabu
 
 - Si cycles fréquents / stagnation rapide: augmenter tenure.
 - Si exploration trop contrainte et lente: diminuer tenure.
-- Si amélioration faible: tester voisinage mixed ou plus diversifié.
+- Si amélioration faible: comparer `relocate` et `exchange`, puis tester `2opt` en famille intra.
 
 ## 12) Plan concret de la suite (quand tu m’enverras les données)
 
@@ -257,3 +257,247 @@ Décision pour campagne 2:
 
 - Aucun mode `mixed` n'est utilisé dans la campagne d'analyse.
 - Chaque run correspond à un choix explicite et traçable de voisinage.
+
+## 18) Campagne 2 automatisée
+
+Un script dédié est disponible:
+
+- `run_campaign2.ps1`
+
+Il produit automatiquement:
+
+- un plan d'exécution `campaign2_plan_*.csv`
+- un journal de progression `campaign2_progress_*.csv`
+
+Modes de campagne:
+
+- `comparison`: compare les structures de voisinage (inter relocate/exchange vs intra 2opt) avec paramètres de base.
+- `tuning`: affine SA (température/refroidissement) et Tabu (tenure) autour des meilleurs réglages observés.
+- `full`: enchaîne `comparison` + `tuning`.
+
+Échelles:
+
+- `quick`: 3 instances, 5 seeds.
+- `full`: 6 instances, 10 seeds.
+
+Commandes recommandées:
+
+1. Démarrage rapide (validation protocole):
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\run_campaign2.ps1 -Campaign comparison -Scale quick
+```
+
+2. Campagne complète comparaison + tuning:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\run_campaign2.ps1 -Campaign full -Scale full
+```
+
+3. Tuning uniquement (si comparaison déjà faite):
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\run_campaign2.ps1 -Campaign tuning -Scale full
+```
+
+Précondition compilation:
+
+```powershell
+javac --release 21 -d bin src/vrptw/*.java
+```
+
+## 19) Analyse des résultats disponibles à ce jour
+
+Résumé global des logs présents dans `resultsSA` et `resultTABU`:
+
+- Total analysé: 129 runs
+- SA: 69 runs
+- Tabu: 60 runs
+- Répartition temporelle:
+  - 2026-04-22: 23 runs
+  - 2026-04-23: 106 runs
+
+Faisabilité:
+
+- Total faisables: 10/129 = 7.75%
+- SA faisables: 5/69 = 7.25%
+- Tabu faisables: 5/60 = 8.33%
+- Tous les runs faisables observés sont en mode fenêtres de temps activées
+
+Qualité moyenne:
+
+- SA:
+  - meilleure distance: 938.9378
+  - distance moyenne: 1259.9936
+  - écart-type: 303.2493
+  - temps moyen: 85.391 ms
+  - temps médian: 86 ms
+- Tabu:
+  - meilleure distance: 873.5485
+  - distance moyenne: 1185.9301
+  - écart-type: 332.9274
+  - temps moyen: 1,444,540.750 ms
+  - temps médian: 262,245 ms
+
+Lecture immédiate:
+
+- Tabu produit les meilleures distances mais reste très coûteux en temps.
+- SA est très rapide, mais moins performant en distance.
+- Le gain de distance de Tabu est réel, mais le coût temps est énorme.
+
+Meilleurs réglages observés:
+
+- SA: `initialTemp=1250.0`, `coolingRate=0.9993`, voisinage inter `relocate`
+- Tabu: `tabuTenure=40`, voisinage inter `relocate`
+- Tabu avec meilleure moyenne de distance: `tabuTenure=70`
+
+Meilleure solution observée:
+
+- Algo: Tabu
+- Instance: `data101.vrp`
+- distance: 873.5485
+- runtime: 264,444 ms
+- paramètre clé: `tabuTenure=40`
+
+État de la campagne 2:
+
+- Plan total généré: 1800 runs
+- Progression observée: 119/1800
+- Statut: campagne partielle, non terminée
+
+## 20) Conclusion provisoire et suite recommandée
+
+Ce que l'on peut déjà écrire dans le rapport:
+
+- SA est la référence temps.
+- Tabu est la référence qualité.
+- Le voisinage inter `relocate` est le meilleur point de départ actuel.
+- Le meilleur compromis SA observé est autour de `T0=1250` et `coolingRate=0.9993`.
+- Le meilleur compromis Tabu observé est autour de `tenure=40`.
+
+Ce qui manque encore pour un rapport final robuste:
+
+- plusieurs instances supplémentaires (pas seulement `data101.vrp`)
+- davantage de runs par configuration pour comparer la stabilité
+- une vraie comparaison finale sur deux modes:
+  - sans fenêtres de temps
+  - avec fenêtres de temps
+
+Recommandation pratique:
+
+- On ne continue pas la campagne 2 complète telle quelle.
+- On fait plutôt une campagne ciblée et plus courte sur 3 instances représentatives.
+- Objectif de la suite: consolider les paramètres retenus et produire un rapport propre sans gonfler inutilement le nombre de runs.
+
+Plan conseillé pour la suite:
+
+1. Garder SA avec `T0=1250` et `coolingRate=0.9993`.
+2. Garder Tabu avec `tenure=40`.
+3. Tester sur 3 instances: une petite, une moyenne, une plus difficile.
+4. Garder 5 seeds.
+5. Comparer `TW off` et `TW on`.
+6. Si on veut un deuxième voisinage à comparer, ajouter `exchange` côté inter, mais seulement sur un sous-ensemble plus réduit.
+
+## 21) Campagne 3 ciblée (60 runs)
+
+Objectif:
+
+- Produire un jeu de résultats propre, équilibré et directement exploitable pour le rapport final.
+
+Design retenu:
+
+- 3 instances: `data101`, `data111`, `data201`
+- 5 seeds: 41, 42, 43, 44, 45
+- 2 modes TW: `non` et `oui`
+- 2 algorithmes: SA et Tabu
+
+Total:
+
+- 3 x 5 x 2 x 2 = 60 runs
+
+Paramètres figés:
+
+- voisinage: famille `inter`, type `relocate`
+- SA: `initialTemp=1250.0`, `coolingRate=0.9993`
+- Tabu: `tabuTenure=40`
+
+Script dédié:
+
+- `run_campaign3_targeted.ps1`
+
+Sorties générées:
+
+- `campaign3_plan_*.csv`
+- `campaign3_progress_*.csv`
+
+Commandes de lancement:
+
+```powershell
+Set-Location "C:\Users\darkf\Desktop\Travail\VRPTW"
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+javac --release 21 -d bin src/vrptw/*.java
+.\run_campaign3_targeted.ps1
+```
+
+Quand les 60 runs sont terminés:
+
+- lancer l'analyse finale SA vs Tabu sur ce lot de 60 runs
+- utiliser ce lot comme base principale du rapport
+- garder les anciennes campagnes comme résultats exploratoires / pré-tests
+
+## 22) Analyse 3e campagne disponible (lot diagnostic actuel)
+
+Etat des fichiers d'analyse consolidés:
+
+- `analysis_overall.csv`
+- `analysis_by_instance_sa.csv`
+- `analysis_by_instance_tabu.csv`
+- `analysis_summary.json`
+
+Périmètre réellement agrégé dans ces exports:
+
+- SA: 5 runs
+- Tabu: 5 runs
+- Instance couverte: `data101.vrp`
+- Faisabilité: 100% pour SA et 100% pour Tabu (tous les runs faisables)
+
+Résultats globaux extraits:
+
+- SA
+  - meilleure distance: 1984.7421
+  - distance moyenne: 2018.6619
+  - distance médiane: 2012.2229
+  - écart-type: 28.4356
+  - runtime moyen: 122.6 ms
+  - solutions évaluées (moyenne): 30001
+- Tabu
+  - meilleure distance: 1796.8156
+  - distance moyenne: 1805.0394
+  - distance médiane: 1806.1589
+  - écart-type: 7.1799
+  - runtime moyen: 417519 ms
+  - solutions évaluées (moyenne): 352849380.6
+
+Lecture comparative immédiate (3e analyse):
+
+- Qualité: Tabu domine SA sur la meilleure distance et la moyenne.
+- Stabilité: Tabu a une variance plus faible sur ce lot (écart-type plus petit).
+- Coût calcul: SA est très largement plus rapide.
+- Conclusion opérationnelle: compromis classique confirmé, Tabu pour la qualité, SA pour le temps.
+
+Interprétation pour le rapport:
+
+- Ces résultats sont exploitables comme bloc "diagnostic contrôlé" et illustrent très bien le trade-off qualité/temps.
+- Comme l'agrégation courante est centrée sur `data101.vrp`, il faut conserver dans le rapport la distinction:
+  - résultats exploratoires multi-instances (campagnes précédentes),
+  - résultats diagnostic focalisés (ce lot de 10 runs),
+  - puis résultats finaux de la campagne ciblée 60 runs quand consolidés.
+
+Action recommandée juste avant rédaction finale:
+
+1. Garder cette analyse 10 runs dans la section "validation rapide du protocole".
+2. Lancer ou consolider la campagne ciblée 60 runs pour la section "résultats principaux".
+3. Conclure avec la comparaison SA vs Tabu sur les deux axes: distance et temps.

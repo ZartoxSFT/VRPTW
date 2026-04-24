@@ -1,0 +1,3 @@
+﻿"algorithm","run_count","feasible_count","feasibility_rate_pct","best_distance","mean_distance","median_distance","stddev_distance","mean_runtime_ms","median_runtime_ms","mean_solutions_evaluated"
+"SA","5","5","100","1984,74213789732","2018,6619","2012,2229","28,4356","122,6","104","30001"
+"TABU","5","5","100","1796,81557235067","1805,0394","1806,1589","7,1799","417519","408610","352849380,6"

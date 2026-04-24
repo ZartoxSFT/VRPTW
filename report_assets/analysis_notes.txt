@@ -1,0 +1,14 @@
+Analysis notes
+==============
+Total runs: 135
+Runs SA: 72
+Runs TABU: 63
+Time period: 2026-04-22 17:18:14 -> 2026-04-24 10:27:38
+Instances covered (3): data101.vrp, data111.vrp, data201.vrp
+TW values: [False, True]
+
+Orders of magnitude:
+best_distance range: 873.549 -> 2054.892
+runtime_ms median: 103.000, mean: 652705.489
+solutions_evaluated mean: 110379608.437
+overall feasibility rate: 11.85%

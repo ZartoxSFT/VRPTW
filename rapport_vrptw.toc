@@ -1,0 +1,75 @@
+\babel@toc {french}{}\relax 
+\contentsline {chapter}{Resume executif}{vi}{chapter*.4}%
+\contentsline {chapter}{Notations}{vii}{chapter*.5}%
+\contentsline {chapter}{\numberline {1}Introduction et cadre du sujet}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Contexte pedagogique}{1}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Objectifs de ce rapport}{1}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Perimetre des donnees disponibles}{1}{section.1.3}%
+\contentsline {chapter}{\numberline {2}Definition du VRPTW et modelisation}{2}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Definition du probleme}{2}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Formulation mathematique simplifiee}{2}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Contraintes structurelles}{2}{section.2.3}%
+\contentsline {chapter}{\numberline {3}Architecture logicielle du solveur}{3}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Organisation generale du code}{3}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Parsing des instances}{3}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Evaluation et faisabilite}{3}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Attention methodologique importante}{4}{section.3.4}%
+\contentsline {chapter}{\numberline {4}Metaheuristiques implementees}{5}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Recuit Simule (SA)}{5}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Recherche Tabou}{5}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Structures de voisinage}{5}{section.4.3}%
+\contentsline {chapter}{\numberline {5}Protocole experimental}{7}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Campagnes realisees}{7}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Scripts utilises}{7}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Consolidation des resultats}{7}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Metriques d'analyse}{7}{section.5.4}%
+\contentsline {chapter}{\numberline {6}Caracterisation des instances}{9}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Statistiques structurelles des donnees}{9}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Lecture}{9}{section.6.2}%
+\contentsline {chapter}{\numberline {7}Resultats globaux consolides}{10}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Vue d'ensemble}{10}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Interpretation immediate}{10}{section.7.2}%
+\contentsline {section}{\numberline {7.3}Illustrations graphiques globales}{11}{section.7.3}%
+\contentsline {chapter}{\numberline {8}Analyse par instance}{13}{chapter.8}%
+\contentsline {section}{\numberline {8.1}Agregation par instance}{13}{section.8.1}%
+\contentsline {section}{\numberline {8.2}Lecture critique}{13}{section.8.2}%
+\contentsline {chapter}{\numberline {9}Impact des fenetres temporelles}{15}{chapter.9}%
+\contentsline {section}{\numberline {9.1}Synthese TW off vs TW on}{15}{section.9.1}%
+\contentsline {section}{\numberline {9.2}Interpretation}{15}{section.9.2}%
+\contentsline {chapter}{\numberline {10}Convergence et dynamique de recherche}{16}{chapter.10}%
+\contentsline {section}{\numberline {10.1}Runs representatifs}{16}{section.10.1}%
+\contentsline {section}{\numberline {10.2}Lecture qualitative des courbes}{17}{section.10.2}%
+\contentsline {chapter}{\numberline {11}Etude des parametres et compromis}{18}{chapter.11}%
+\contentsline {section}{\numberline {11.1}Parametres SA}{18}{section.11.1}%
+\contentsline {section}{\numberline {11.2}Parametres Tabu}{18}{section.11.2}%
+\contentsline {section}{\numberline {11.3}Nombre d'iterations : faut-il tout retuner ?}{18}{section.11.3}%
+\contentsline {chapter}{\numberline {12}Nombre minimal de vehicules}{20}{chapter.12}%
+\contentsline {section}{\numberline {12.1}Etat des resultats effectivement disponibles}{20}{section.12.1}%
+\contentsline {section}{\numberline {12.2}Borne capacitaire (valeur sure)}{20}{section.12.2}%
+\contentsline {section}{\numberline {12.3}Plan pour finaliser cette exigence}{20}{section.12.3}%
+\contentsline {chapter}{\numberline {13}Discussion critique des resultats}{21}{chapter.13}%
+\contentsline {section}{\numberline {13.1}Qui gagne, et sur quoi ?}{21}{section.13.1}%
+\contentsline {section}{\numberline {13.2}Pourquoi Tabu est beaucoup plus lent ?}{21}{section.13.2}%
+\contentsline {section}{\numberline {13.3}Effet du voisinage}{21}{section.13.3}%
+\contentsline {section}{\numberline {13.4}Validite externe et limites}{21}{section.13.4}%
+\contentsline {chapter}{\numberline {14}Reproductibilite}{23}{chapter.14}%
+\contentsline {section}{\numberline {14.1}Compilation et execution}{23}{section.14.1}%
+\contentsline {section}{\numberline {14.2}Consolidation des analyses}{23}{section.14.2}%
+\contentsline {section}{\numberline {14.3}Trace experimentale}{23}{section.14.3}%
+\contentsline {chapter}{\numberline {15}Reponse explicite aux exigences du sujet}{24}{chapter.15}%
+\contentsline {section}{\numberline {15.1}Exigence 1: modelisation et code}{24}{section.15.1}%
+\contentsline {section}{\numberline {15.2}Exigence 2: nombre minimal de vehicules}{24}{section.15.2}%
+\contentsline {section}{\numberline {15.3}Exigence 3: generateur aleatoire de solutions}{24}{section.15.3}%
+\contentsline {section}{\numberline {15.4}Exigence 4: deux metaheuristiques + protocole}{24}{section.15.4}%
+\contentsline {section}{\numberline {15.5}Exigence 5: comparaison complete}{24}{section.15.5}%
+\contentsline {section}{\numberline {15.6}Exigence 6 (bonus) : limite de la programmation lineaire}{25}{section.15.6}%
+\contentsline {chapter}{\numberline {16}Conclusion generale}{26}{chapter.16}%
+\contentsline {chapter}{Perspectives d'amelioration}{27}{chapter*.17}%
+\contentsline {chapter}{\numberline {A}Tableaux complementaires}{28}{appendix.A}%
+\contentsline {section}{\numberline {A.1}Detail instance x TW x algorithme}{28}{section.A.1}%
+\contentsline {chapter}{\numberline {B}Extraits techniques du code}{30}{appendix.B}%
+\contentsline {section}{\numberline {B.1}Fonction objectif penalisee (schema)}{30}{section.B.1}%
+\contentsline {section}{\numberline {B.2}Acceptation SA (schema)}{30}{section.B.2}%
+\contentsline {section}{\numberline {B.3}Selection Tabu (schema)}{30}{section.B.3}%
+\contentsline {chapter}{\numberline {C}Guide de lecture pour la soutenance}{32}{appendix.C}%
+\contentsline {chapter}{Bibliographie indicative}{33}{appendix*.19}%

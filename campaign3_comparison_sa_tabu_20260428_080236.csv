@@ -1,0 +1,6 @@
+instance,enforce_time_windows,SA,TABU,Difference (Tabu - SA),Ratio (Tabu/SA)
+data101.vrp,False,1203.2716,1071.7147,-131.557,0.8907
+data101.vrp,True,2073.3873,1791.7237,-281.6636,0.8642
+data111.vrp,False,1202.1051,968.5447,-233.5604,0.8057
+data111.vrp,True,1420.2899,1209.85,-210.44,0.8518
+data201.vrp,True,1471.7669,1311.896,-159.8708,0.8914

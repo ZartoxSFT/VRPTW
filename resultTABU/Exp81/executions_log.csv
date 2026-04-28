@@ -1,0 +1,2 @@
+timestamp,instance,algorithm,best_objective,best_distance,time_violation,capacity_violation,vehicle_violation,routes,runtime_ms,solutions_evaluated,generated_relocate,generated_swap,generated_noop,penalty_weight,enforce_time_windows,max_vehicles,parameters
+"2026-04-27 20:51:25","data101.vrp","tabu",1804.4716237558835,1804.4716237558835,0.0,0.0,0.0,24,1408880,1184838555,1184838554,0,0,1000.0,true,2147483647,"iterations=100000; seed=15032385572; tabuTenure=40; interNeighborhoodType=relocate; intraNeighborhoodType=relocate; vehicleLimit=2147483647"

@@ -1,0 +1,70 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                   VRPTW CAMPAIGN 3 - ANALYSE COMPLÈTE                       ║
+║                        Vous avez 186 runs ✓                                  ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+COMMENCEZ PAR LIRE (dans l'ordre):
+
+1️⃣  RESULTATS_CLÉS.txt
+    └─ 5 minutes
+    └─ Les 3 points clés pour votre rapport
+
+2️⃣  RESUME_EXECUTIF_FR.md
+    └─ 20 minutes
+    └─ Texte prêt à copier-coller dans votre rapport
+
+3️⃣  campaign3_report_summary_*.csv
+    └─ Ouvrir en Excel
+    └─ Tableau prêt pour rapport
+
+4️⃣  Créer 2 graphiques (boxplot + courbes)
+    └─ À partir de campaign3_consolidated_*.csv
+
+────────────────────────────────────────────────────────────────────────────
+
+LES 3 POINTS CLÉS (résumé ultra-court):
+
+  ✓ TABU est meilleur:  +12.2% qualité (1243 vs 1415 km)
+  ✓ Voisinage optimal:  inter-relocate
+  ✓ Fenêtres de temps:  +55% distance, 100% faisable pour Tabu
+
+────────────────────────────────────────────────────────────────────────────
+
+FICHIERS DISPONIBLES:
+
+  📘 Pour rapport:
+     - RESULTATS_CLÉS.txt ← LIRE EN PREMIER
+     - RESUME_EXECUTIF_FR.md (sections prêtes à copier)
+     - ANALYSIS_REPORT_CAMPAIGN3.md (détails complets)
+     - OPTIMAL_PARAMETERS.md (paramètres exacts)
+
+  📊 Pour Excel/graphiques:
+     - campaign3_report_summary_*.csv (tableau prêt)
+     - campaign3_consolidated_*.csv (données brutes 320 runs)
+     - campaign3_comparison_sa_tabu_*.csv (SA vs Tabu direct)
+
+  📑 Pour navigation:
+     - INDEX_FICHIERS_ANALYSE.md (liste complète)
+     - GUIDE_ACCES_RESULTATS.md (par objectif)
+
+────────────────────────────────────────────────────────────────────────────
+
+PROCHAINES ÉTAPES:
+
+  1. Lire RESULTATS_CLÉS.txt (5 min) ← MAINTENANT
+  2. Ouvrir RESUME_EXECUTIF_FR.md (20 min)
+  3. Copier tableau → Word
+  4. Créer graphiques (30 min)
+  5. Rédiger section "Résultats" (30 min)
+
+Total: ~2 heures pour finir rapport + slides!
+
+────────────────────────────────────────────────────────────────────────────
+
+DEADLINE: 4 mai 2026 à 07h00
+
+Vous êtes dans les délais! ✓
+
+════════════════════════════════════════════════════════════════════════════
+
+➡️  ALLEZ LIRE RESULTATS_CLÉS.txt MAINTENANT! ➡️

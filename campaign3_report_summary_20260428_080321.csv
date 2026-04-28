@@ -1,0 +1,11 @@
+Instance,Mode,Algorithm,Best Distance,Avg Distance,Feasible %,Avg Time (s),Runs
+data101.vrp,no TW,SA,921.91,1203.27 ± 221.92,0.0%,0.09,94
+data101.vrp,no TW,TABU,873.55,1071.71 ± 245.32,0.0%,1139.82,85
+data101.vrp,with TW,SA,1820.51,2073.39 ± 235.01,97.2%,0.12,36
+data101.vrp,with TW,TABU,1741.09,1791.72 ± 28.71,100.0%,604.26,36
+data111.vrp,no TW,SA,921.91,1202.11 ± 213.04,0.0%,0.10,18
+data111.vrp,no TW,TABU,884.73,968.54 ± 52.39,0.0%,375.28,17
+data111.vrp,with TW,SA,1136.01,1420.29 ± 242.31,100.0%,0.11,16
+data111.vrp,with TW,TABU,1176.15,1209.85 ± 31.92,100.0%,478.14,16
+data201.vrp,with TW,SA,1471.77,1471.77 ± nan,100.0%,0.10,1
+data201.vrp,with TW,TABU,1311.90,1311.90 ± nan,100.0%,566.01,1

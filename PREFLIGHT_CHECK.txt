@@ -1,0 +1,238 @@
+# PRE-FLIGHT CHECK - Campagne 3
+
+Avant de lancer `.\run_campaign3.ps1`, vérifier ces points:
+
+---
+
+## ✅ Environnement Java
+
+- [ ] **Java est installé**
+  ```powershell
+  java -version
+  ```
+  Doit afficher version 11+
+
+- [ ] **Javac disponible**
+  ```powershell
+  javac -version
+  ```
+
+- [ ] **Classes compilées**
+  ```powershell
+  Test-Path "bin/vrptw/Main.class"
+  ```
+  Doit retourner `True`
+
+  **Si False, compiler:**
+  ```powershell
+  javac --release 21 -d bin src/vrptw/*.java
+  ```
+
+---
+
+## ✅ Fichiers d'instance
+
+- [ ] **data101.vrp existe**
+  ```powershell
+  Test-Path "data/data101.vrp"
+  ```
+
+- [ ] **data111.vrp existe**
+  ```powershell
+  Test-Path "data/data111.vrp"
+  ```
+
+- [ ] **data1101.vrp existe**
+  ```powershell
+  Test-Path "data/data1101.vrp"
+  ```
+
+  **Si un fichier manque**: 
+  - Vérifier le répertoire `data/`
+  - Les 10 fichiers data*.vrp doivent être présents
+
+---
+
+## ✅ Répertoires de résultats
+
+- [ ] **Répertoire resultsSA existe**
+  ```powershell
+  Test-Path "resultsSA"
+  ```
+
+  **Si n'existe pas, le créer:**
+  ```powershell
+  mkdir -Force resultsSA
+  ```
+
+- [ ] **Répertoire resultTABU existe**
+  ```powershell
+  Test-Path "resultTABU"
+  ```
+
+  **Si n'existe pas, le créer:**
+  ```powershell
+  mkdir -Force resultTABU
+  ```
+
+- [ ] **Les répertoires sont accessibles en écriture**
+  ```powershell
+  Test-Path "resultsSA"  # Doit être writable
+  Test-Path "resultTABU" # Doit être writable
+  ```
+
+---
+
+## ✅ Espace disque
+
+- [ ] **Au moins 1 GB disponible** (pour 360 runs + logs)
+  ```powershell
+  Get-PSDrive C | Select-Object @{Name="Free GB";Expression={[math]::Round($_.Free/1GB)}}
+  ```
+
+---
+
+## ✅ Scripts disponibles
+
+- [ ] **run_campaign3.ps1 existe**
+  ```powershell
+  Test-Path "run_campaign3.ps1"
+  ```
+
+- [ ] **analyze_campaign3.py existe**
+  ```powershell
+  Test-Path "analyze_campaign3.py"
+  ```
+
+---
+
+## ✅ Dépendances Python (pour analyse post-exécution)
+
+- [ ] **Python 3.7+ installé**
+  ```powershell
+  python --version
+  ```
+
+- [ ] **pandas installé**
+  ```powershell
+  python -c "import pandas; print('OK')"
+  ```
+
+  **Si manquant:**
+  ```powershell
+  pip install pandas numpy
+  ```
+
+- [ ] **numpy installé**
+  ```powershell
+  python -c "import numpy; print('OK')"
+  ```
+
+---
+
+## ✅ Permissions & Execution Policy
+
+- [ ] **Pouvoir exécuter scripts PowerShell**
+  ```powershell
+  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+  ```
+
+  Cette commande permet d'exécuter le script pour cette session seulement.
+
+---
+
+## ✅ Lecture documentation
+
+- [ ] **Lire QUICKSTART_CAMPAIGN3.txt** (5 min)
+- [ ] **Lire README_CAMPAIGN3.md** (15 min)
+- [ ] **Comprendre** que:
+  - 360 runs vont s'exécuter séquentiellement
+  - Durée: 1-3 heures
+  - Tabu sur data1101 sera très lent (normal)
+  - Les résultats iront dans resultsSA/ et resultTABU/
+
+---
+
+## ✅ Système prêt?
+
+**Vérification rapide du tout:**
+
+```powershell
+# Compiler
+javac --release 21 -d bin src/vrptw/*.java
+
+# Vérifier classes compilées
+Test-Path "bin/vrptw/Main.class"
+
+# Vérifier instances
+Test-Path "data/data101.vrp"
+Test-Path "data/data111.vrp"
+Test-Path "data/data1101.vrp"
+
+# Vérifier scripts
+Test-Path "run_campaign3.ps1"
+Test-Path "analyze_campaign3.py"
+
+# Vérifier répertoires résultats
+Test-Path "resultsSA"
+Test-Path "resultTABU"
+
+# Vérifier espace disque
+Get-PSDrive C | Select-Object @{Name="Free GB";Expression={[math]::Round($_.Free/1GB)}}
+
+# Vérifier Python (facultatif pour lancement)
+python --version
+```
+
+Tous les `Test-Path` doivent retourner `True`.
+
+---
+
+## 🚀 Ready to Launch?
+
+Si tous les ✅ sont cochés, vous êtes prêts!
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\run_campaign3.ps1
+```
+
+Le script va:
+1. Générer le plan de 360 runs
+2. Exécuter chaque run
+3. Afficher la progression en direct
+4. Créer les fichiers campaign3_plan_*.csv et campaign3_progress_*.csv
+5. Générer logs dans resultsSA/ et resultTABU/
+
+**Durée: 1-3 heures selon CPU et rapidité Tabu**
+
+Une fois terminé:
+```powershell
+python analyze_campaign3.py
+```
+
+---
+
+## ⚠️ En cas de problème
+
+**Le script plante immédiatement?**
+- Vérifier compilation: `javac --release 21 -d bin src/vrptw/*.java`
+- Vérifier instances existent: `data/data101.vrp`, etc.
+
+**Le script s'exécute mais très lent?**
+- C'est normal pour Tabu! Laissez tourner (peut prendre plusieurs heures sur data1101)
+- Ou réduire itérations: `.\run_campaign3.ps1 -Iterations "10000,30000"`
+
+**Aucune erreur mais peu de fichiers générés?**
+- Vérifier que `resultsSA/` et `resultTABU/` ont les bons droits d'accès en écriture
+- Vérifier qu'il y a assez d'espace disque
+
+**L'analyse Python échoue?**
+- Vérifier que pandas est installé: `pip install pandas numpy`
+- Vérifier que les logs ont bien été générés: `Get-ChildItem resultsSA/Exp*/executions_log.csv`
+
+---
+
+## ✅ PRÊT? 
+
+Cochez tout, puis lancez! Bon courage! 🚀

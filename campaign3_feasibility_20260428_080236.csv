@@ -1,0 +1,11 @@
+instance,algorithm,enforce_time_windows,feasible_count,total_runs,feasibility_rate
+data101.vrp,SA,False,0,94,0.0
+data101.vrp,SA,True,35,36,0.972
+data101.vrp,TABU,False,0,85,0.0
+data101.vrp,TABU,True,36,36,1.0
+data111.vrp,SA,False,0,18,0.0
+data111.vrp,SA,True,16,16,1.0
+data111.vrp,TABU,False,0,17,0.0
+data111.vrp,TABU,True,16,16,1.0
+data201.vrp,SA,True,1,1,1.0
+data201.vrp,TABU,True,1,1,1.0

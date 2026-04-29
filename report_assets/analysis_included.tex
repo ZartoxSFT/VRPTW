@@ -1,0 +1,58 @@
+% Analyse approfondie incluse automatiquement
+\chapter{Analyse approfondie et recommandations}
+\label{ch:analyse_profonde}
+
+\section*{Resume exécutif de l'analyse}
+Le jeu d'expérimentation (135 runs : 72 SA, 63 Tabu) montre un compromis clair :
+\begin{itemize}[leftmargin=1.2cm]
+  \item Taux de faisabilite global : 11,85\% ; forte dépendance au protocole (TW on/off, seeds, instances).
+  \item SA : distance moyenne \textbf{1272,08} km, runtime moyen \textbf{85,69 ms}, evaluations moyennes \textbf{30\,001}.
+  \item Tabu : distance moyenne \textbf{1197,37} km, runtime moyen \textbf{1\,398\,556,68 ms}, evaluations moyennes \textbf{236\,493\,445}.
+  \item Interpretation : Tabu fournit de meilleures distances moyennes au prix d'un coût de calcul astronomique ; SA reste l'option rapide et robuste.
+\end{itemize}
+
+\section*{Points méthodologiques clés}
+\begin{itemize}[leftmargin=1.2cm]
+  \item L'activation des fenetres temporelles n'est pas balancée entre les lots : tous les runs \texttt{TW\ off} sont non faisables dans les données consolidées, tandis que les runs \texttt{TW\ on} du lot sont faisables — ceci traduit un biais de protocole et non une propriété intrinsèque du problème.
+  \item Tabu évalue ``tous'' les voisins (fonction `getAllNeighbors(...)`), ce qui explique le nombre massif d'évaluations et les temps de calcul longs par rapport à SA qui échantillonne un voisin aléatoire par itération.
+  \item La distribution des instances est fortement déséquilibrée (data101 domine). Toute conclusion globale doit être nuancée en conséquence.
+\end{itemize}
+
+\section*{Résultats chiffrés saillants}
+\begin{table}[H]
+\centering
+\caption{Résumé clef : SA vs Tabu (moyennes sur lots disponibles)}
+\begin{tabular}{lrrr}
+\toprule
+Algorithme & Dist. moy. & Runtime moy. (ms) & Sol. éval. moy. \\
+\midrule
+SA & 1272,08 & 85,69 & 30\,001 \\
+Tabu & 1197,37 & 1\,398\,556,68 & 236\,493\,445 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section*{Recommandations opérationnelles}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Pour un usage pratique ou des prototypes rapides : déployer SA avec $T_0=1250$, $\alpha\approx0{,}9993$ et 30\,000 itérations comme base, car ce règlage donne un bon compromis qualité/vitesse.
+  \item Pour optimisation maximum sur une instance unique (budget temps disponible) : Tabu avec \texttt{tenure=40} et voisinage exhaustif donne habituellement de meilleures distances mais nécessite un filtrage des voisins ou une limite temporelle pour rester utilisable.
+  \item Pour comparer SA et Tabu proprement : relancer une campagne équilibrée couvrant les mêmes seeds, instances et grille de para-mètres (meme nombre d'itérations, ou budgets temps équivalents en ms) et mesurer la qualite en fonction du budget temps.
+  \item Automatiser l'appel de `VehicleMinimizer.estimate(...)` pour calculer le minimum de véhicules avec et sans TW et ajouter ces sorties aux CSV consolidés.
+\end{itemize}
+
+\section*{Protocole proposé pour la campagne finale}
+\begin{enumerate}[leftmargin=1.2cm]
+  \item Sélectionner 3 instances representatives (data101, data111, data201) et 30 seeds par instance.
+  \item Pour chaque algorithme, fixer un budget temps égal (ex. 5 minutes par run) et mesurer la qualite atteinte à différents jalons temporels (30s, 1min, 3min, 5min).
+  \item Tester SA avec la grille $T_0\in\{1000,1250,1500\}$, $\alpha\in\{0{,}9993,0{,}9995\}$ ; Tabu avec $\tau\in\{20,40,60\}$ et une limite de voisins evalués par pas (sample ou heuristique de filtrage).
+  \item Produire des figures : courbes qualité vs temps (median + IQR), distribution des distances, taux de faisabilite par mode TW.
+\end{enumerate}
+
+\section*{Brefs axes théoriques et techniques}
+\begin{itemize}[leftmargin=1.2cm]
+  \item En pratique, remplacer l'évaluation exhaustive des voisins dans Tabu par un échantillonnage guidé (meilleure heuristique, e.g. classement partiel) ou limiter la taille du voisinage pour contrôler le coût.
+  \item Envisager une hybridation simple : utiliser SA pour diversification rapide, puis lancer une phase Tabu d'intensification localisée sur le meilleur candidat (budget temps restreint).
+\end{itemize}
+
+\section*{Remarque finale}
+L'analyse détaillée et les données brutes sont disponibles dans les artefacts CSV et les fichiers Markdown préparés dans le dépôt. L'inclusion présente centralise les recommandations actionnables pour la conclusion et les perspectives du rapport.

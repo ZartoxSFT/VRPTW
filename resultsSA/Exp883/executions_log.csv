@@ -1,0 +1,2 @@
+timestamp,instance,algorithm,best_objective,best_distance,time_violation,capacity_violation,vehicle_violation,routes,runtime_ms,solutions_evaluated,generated_relocate,generated_swap,generated_noop,penalty_weight,enforce_time_windows,max_vehicles,parameters
+"2026-04-29 11:46:36","data101.vrp","sa",1828.279807155363,1828.279807155363,0.0,0.0,0.0,22,207,100001,100000,0,0,500000.0,true,2147483647,"iterations=100000; seed=66571993158; initialTemp=1500.0; coolingRate=0.9995; interNeighborhoodType=relocate; intraNeighborhoodType=relocate; vehicleLimit=2147483647"

@@ -1,314 +1,153 @@
-# CAMPAIGN 3 ANALYSIS REPORT - Final Results
+# CAMPAIGN 3 ANALYSIS REPORT - Final Results (WITH TIME WINDOWS ONLY)
 
 **Date:** April 28, 2026  
-**Total Runs Completed:** 186 (out of 360 planned)  
-**SA Logs:** 165 | **Tabu Logs:** 155  
-**Total Consolidated Records:** 320
+**Total Runs (WITH TW):** 106 runs (out of 186 total)  
+**Instances:** data101, data111, data201  
+**Focus:** Time-windowed vehicle routing (realistic constraints)
 
 ---
 
 ## Executive Summary
 
-La Campagne 3 a généré 186 runs sur 3 instances représentatives (data101, data111, data201) avec des variantes de fenêtres de temps. Les résultats montrent des différences significatives entre SA et Tabu, confirmant l'importance du choix d'algorithme et de la configuration des paramètres.
+Campagne 3 a généré **106 runs avec fenêtres temporelles** sur 3 instances VRPTW réalistes. Les résultats montrent que :
+
+- **TABU surpasse SA** en qualité moyenne
+- **data111 est plus facile** que data101  
+- **Convergence:** SA s'améliore avec + d'itérations (100k meilleur); TABU converge tôt (10k acceptable)
+- **Optimum trouvé:** 1136.01 km (SA, data111, 14 routes)
 
 ---
 
-## 1. MEILLEURS PARAMÈTRES TROUVÉS
+## 1. RÉSULTATS GLOBAUX (AVEC FENÊTRES DE TEMPS)
 
-### Simulated Annealing (SA) - Configuration Optimale
+### Statistiques Globales
 
-| Paramètre | Valeur | Remarque |
-|-----------|--------|---------|
-| **Temperature Initiale** | 1250.0 | Balayé entre 500-1500 |
-| **Cooling Rate** | 0.9993 | Meilleur trouvé en Campagne 2 |
-| **Voisinage Inter** | relocate | Meilleur type exploré |
-| **Voisinage Intra** | 2opt | Complément standard |
-| **Itérations** | 100 000 | Nécessaire pour convergence |
 
-**Meilleure solution SA trouvée:**
-- Instance: data111.vrp
-- Distance: 921.91 km
-- Temps: ~150 ms
-- Graine (seed): 66571993099
-- Faisabilité: 100%
+**SA**
+- Meilleure distance: 1136.01 km
+- Distance moyenne: 1864.87 km (±384.71)
+- Pire distance: 2529.81 km
+- Nombre de runs: 53
 
-### Tabu Search - Configuration Optimale
-
-| Paramètre | Valeur | Remarque |
-|-----------|--------|---------|
-| **Tabu Tenure** | 40 | Optimal trouvé en Campagne 2 |
-| **Voisinage Inter** | relocate | Meilleur type exploré |
-| **Voisinage Intra** | 2opt | Complément standard |
-| **Itérations** | 30 000 | SA améliore jusqu'à 100k, Tabu converge plus tôt |
-
-**Meilleure solution Tabu trouvée:**
-- Instance: data101.vrp
-- Distance: 873.55 km
-- Temps: ~375-400 s (coûteux!)
-- Graine (seed): 15032385576
-- Faisabilité: 100%
+**TABU**
+- Meilleure distance: 1176.15 km
+- Distance moyenne: 1607.01 km (±273.27)
+- Pire distance: 1827.52 km
+- Nombre de runs: 53
 
 ---
 
-## 2. ANALYSE DE VOISINAGE (CRITICAL FINDING)
+## 2. PERFORMANCE PAR INSTANCE (AVEC TW)
 
-### Voisinage Testé
 
-| Type | Description | Performance SA | Performance Tabu | Conclusion |
-|------|-------------|-----------------|------------------|------------|
-| **inter_relocate** | Déplacer un client vers autre tournée | 1415.66±419.08 | 1243.44±358.38 | **OPTIMAL** |
-| inter_exchange | Échanger clients entre tournées | (non testé seul) | (non testé seul) | Moins efficace |
-| intra_2opt | 2-opt intra-tournée | (non testé seul) | (non testé seul) | Moins efficace |
+### data101.vrp
 
-**✓ RECOMMANDATION:** `inter_relocate` est le voisinage **optimal** pour les deux algorithmes. C'est la structure qui offre le meilleur compromis entre exploration et exploitation.
+**SA**
+- Meilleure distance: 1820.51 km
+- Nombre de routes: 23
+- Distance moyenne: 2073.39 km (±235.01)
+- Seed: 66571993098
+- Runtime (best): 227 ms
 
-**Raison:** La relocation permet des mouvements inter-tournée efficaces qui:
-- Rééquilibrent les charges (capacité)
-- Réduisent les distances globales
-- Respectent les fenêtres de temps
+**TABU**
+- Meilleure distance: 1741.09 km
+- Nombre de routes: 21
+- Distance moyenne: 1791.72 km (±28.71)
+- Seed: 15032385634
+- Runtime (best): 128619 ms
 
----
 
-## 3. COMPARAISON SA vs TABU
+### data111.vrp
 
-### Qualité des Solutions
+**SA**
+- Meilleure distance: 1136.01 km
+- Nombre de routes: 14
+- Distance moyenne: 1420.29 km (±242.31)
+- Seed: 66571993101
+- Runtime (best): 199 ms
 
-| Métrique | SA | Tabu | Gagnant | Avantage |
-|----------|----|----|---------|----------|
-| **Distance moyenne** | 1415.66 km | 1243.44 km | **Tabu** | +12.2% |
-| **Meilleure distance** | 921.91 km | 873.55 km | **Tabu** | +5.8% |
-| **Écart-type** | 419.08 | 358.38 | **Tabu** | Plus robuste |
-| **Min. distance** | 921.91 km | 873.55 km | **Tabu** | - |
-| **Max. distance** | ~2200 km | ~1800 km | **Tabu** | Meilleure capping |
+**TABU**
+- Meilleure distance: 1176.15 km
+- Nombre de routes: 15
+- Distance moyenne: 1209.85 km (±31.92)
+- Seed: 15032385570
+- Runtime (best): 105469 ms
 
-### Vitesse d'Exécution
 
-| Métrique | SA | Tabu | Ratio |
-|----------|----|----|-------|
-| **Temps moyen** | 0.1 s | 859.6 s | **Tabu est 8636× plus lent** |
-| **Temps médian** | ~0.08 s | ~375 s | - |
-| **Solutions évaluées/s** | ~300 000/s | ~400/s | SA explore bien plus |
+### data201.vrp
 
-**✓ TRADEOFF:** Tabu gagne 12% en qualité mais coûte 8600× en temps!
+**SA**
+- Meilleure distance: 1471.77 km
+- Nombre de routes: 11
+- Distance moyenne: 1471.77 km (±nan)
+- Seed: 66571993098
+- Runtime (best): 97 ms
 
-### Robustesse (Stabilité)
+**TABU**
+- Meilleure distance: 1311.90 km
+- Nombre de routes: 14
+- Distance moyenne: 1311.90 km (±nan)
+- Seed: 15032385570
+- Runtime (best): 566007 ms
 
-| Métrique | SA | Tabu |
-|----------|----|----|
-| **Écart-type distance** | 419.08 | 358.38 |
-| **Coefficient variation** | 29.6% | 28.8% |
-| **Taux faisabilité** | 99.1% | 99.7% |
-
-**✓ Tabu est légèrement plus robuste** (std inférieur), mais SA reste acceptable.
-
----
-
-## 4. IMPACT DES FENÊTRES DE TEMPS
-
-### Impact sur la Distance (Augmentation %)
-
-| Instance | Mode | SA | Tabu |
-|----------|------|----|----|
-| **data101** | Sans TW | 1203.08 km | 1054.52 km |
-| **data101** | Avec TW | 1864.87 km | 1607.01 km |
-| **Impact %** | - | **+55.0%** | **+52.4%** |
-
-### Impact sur la Faisabilité
-
-| Condition | SA | Tabu |
-|-----------|----|----|
-| **Sans TW - Faisable** | 98.2% | 99.0% |
-| **Avec TW - Faisable** | 98.1% | **100%** |
-| **Violation temporelle** | Réduite | Respectée 100% |
-
-**✓ CRITICAL:** Les fenêtres de temps augmentent les distances de ~55%, mais Tabu les gère mieux (100% faisable vs 98% pour SA).
 
 ---
 
-## 5. ANALYSE PAR INSTANCE
+## 3. MEILLEURE SOLUTION GLOBALE (AVEC TW)
 
-### data101.vrp (Petite instance ~100 clients)
+### SA
 
 ```
-Runs: 251 total
-SA: best=921.91, avg=1401.3±412.5, time=0.1s
-Tabu: best=873.55, avg=1232.8±351.2, time=375-400s
-Winner: Tabu (12% meilleur), mais 3800× plus lent
+Instance:         data111.vrp
+Distance:         1136.01 km
+Routes:           14
+Runtime:          199 ms
+Seed:             66571993101
 ```
 
-### data111.vrp (Moyenne instance ~100 clients, plus complexe)
+### TABU
 
 ```
-Runs: 67 total
-SA: best=921.91, avg=1450.2±438.1, time=0.1s
-Tabu: best=884.73, avg=1278.5±372.4, time=400-500s
-Winner: Tabu (12% meilleur)
-Observation: Même structure taille que data101, mais plus difficile
+Instance:         data111.vrp
+Distance:         1176.15 km
+Routes:           15
+Runtime:          105469 ms
+Seed:             15032385570
 ```
 
-### data201.vrp (Petite campagne seulement 2 runs)
-
-```
-Runs: 2 total
-SA: best=1471.77
-Tabu: best=1311.90
-Note: Données insuffisantes pour conclusion (campagne partielle)
-```
-
-**✓ Tabu gagne systématiquement sur les instances testées.**
 
 ---
 
-## 6. ÉVOLUTION AVEC LES ITÉRATIONS
+## 4. CONVERGENCE AVEC ITÉRATIONS
 
-### Convergence Observée (Basée sur 186 runs)
+| Itérations | SA Moyenne | SA Min | TABU Moyenne | TABU Min |
+|-----------|-----------|--------|-------------|----------|
+| 10,000 | 2204.26 | 1661.25 | 1597.07 | 1176.15 |
+| 30,000 | 1782.24 | 1275.81 | 1619.98 | 1176.15 |
+| 100,000 | 1652.20 | 1136.01 | 1597.07 | 1176.15 |
 
-| Itérations | SA Distance | Tabu Distance | Observation |
-|------------|-------------|---------------|-------------|
-| 10 000 | ~1450 km | ~1280 km | Tabu déjà devant |
-| 30 000 | ~1425 km | ~1245 km | Tabu améliore |
-| 100 000 | ~1400 km | ~1240 km | **Plateau** (peu de gain après 30k) |
+✓ **SA bénéficie d'itérations longues** (convergence progressive)
+✓ **TABU converge vite** (10k-30k suffisent)
 
-**✓ Plateau observé:** Au-delà de 30 000 itérations, les gains marginaux diminuent pour les deux algos. Recommandation pour production: 30k itérations = bon compromis qualité/temps.
-
----
-
-## 7. DONNÉES DE CAMPAGNE
-
-### Distribution des Runs
-
-```
-Total records consolidés: 320
-
-Par algorithme:
-  SA: 165 runs
-  Tabu: 155 runs
-
-Par instance:
-  data101: 251 runs (78%)
-  data111: 67 runs (21%)
-  data201: 2 runs (1%)
-
-Par mode TW:
-  Sans TW: 160 runs (50%)
-  Avec TW: 160 runs (50%)
-
-Taux faisabilité:
-  SA + sans TW: 100%
-  SA + avec TW: 98.1%
-  Tabu + sans TW: 99.0%
-  Tabu + avec TW: 100%
-```
 
 ---
 
-## 8. FICHIERS GÉNÉRÉS POUR ANALYSE
+## 5. RECOMMANDATIONS
 
-Les fichiers suivants ont été exportés et sont prêts pour Excel/Tableau:
+### Pour Amélioration
+1. **Augmenter pénalité véhicule:** `penalty_weight = 100000` (vs 1000) pour minimiser agressivement
+2. **Forcer véhicules:** `MaxVehicles = 19` pour reproduire solution prof
+3. **Recherche bi-étape:** (1) min véhicules, (2) min distance à véhicules fixés
 
-1. **campaign3_consolidated_*.csv** (320 lignes)
-   - Toutes les données brutes de runs
-   - Colonnes: instance, algorithm, best_distance, runtime_ms, parameters, etc.
-
-2. **campaign3_summary_*.csv**
-   - Statistiques agrégées par configuration
-   - Moyennes, écart-types, min/max
-
-3. **campaign3_feasibility_*.csv**
-   - Taux faisabilité par config
-
-4. **campaign3_runtime_*.csv**
-   - Temps d'exécution par algo
-
-5. **campaign3_comparison_sa_tabu_*.csv**
-   - Comparaison directe SA vs Tabu
-
-6. **campaign3_report_summary_*.csv** (NOUVELLEMENT GÉNÉRÉ)
-   - Tableau récapitulatif pour rapport
-   - Format: Instance | Mode TW | Algo | Metrics
+### Paramètres Confirmés
+- **SA:** 100k itérations, T=1250, cooling=0.9993, inter_relocate
+- **TABU:** 30k itérations, tenure=40, inter_relocate
 
 ---
 
-## 9. RECOMMANDATIONS POUR LE RAPPORT
+## DONNÉES EXTRAITES
 
-### À Inclure dans Section "Résultats Expérimentaux"
-
-#### 1. Tableau Principal Comparatif
-
-```
-Instance | Mode TW | SA (best/avg/std) | Tabu (best/avg/std) | Gagnant | Temps
----------|---------|-------------------|-------------------|---------|-------
-data101  | non     | 921.91/1401±412   | 873.55/1232±351    | Tabu(+12%) | 3800×
-data101  | oui     | 1471/1864±...     | 1311/1607±...      | Tabu(+12%) | 3800×
-data111  | non     | 921.91/1450±438   | 884.73/1278±372    | Tabu(+13%) | 4000×
-data111  | oui     | 1520/1900±...     | 1350/1630±...      | Tabu(+12%) | 4000×
-```
-
-#### 2. Impact Fenêtres de Temps
-
-> "L'ajout de fenêtres de temps augmente les distances de ~55% pour SA et ~52% pour Tabu. 
-> Cependant, Tabu gère mieux cette contrainte (100% faisable vs 98% pour SA)."
-
-#### 3. Choix du Voisinage
-
-> "Le voisinage inter-relocate s'avère optimal pour les deux métaheuristiques, 
-> avec des performances de 1415.66 km (SA) et 1243.44 km (Tabu), 
-> dépassant inter-exchange et intra-2opt."
-
-#### 4. Conclusion Qualité/Temps
-
-> "Tabu produit des solutions 12% meilleures que SA, mais au coût d'une 
-> exécution 8600 fois plus lente. Pour un contexte temps-réel, SA est préférable. 
-> Pour une optimisation offline, Tabu est recommandé."
-
----
-
-## 10. STATISTIQUES CLÉS À CITER
-
-- **Nombre de runs:** 186 (3 instances × 10 seeds × 2 modes TW × 2 algos × 3 itérations partiellement)
-- **Meilleure distance globale:** 873.55 km (Tabu sur data101)
-- **Distance moyenne SA:** 1415.66 km (± 419.08)
-- **Distance moyenne Tabu:** 1243.44 km (± 358.38)
-- **Amélioration Tabu:** 12.2% en qualité
-- **Coût temps Tabu:** 8636× plus lent
-- **Faisabilité avec TW:** 98-100% (sauf SA sans TW: 100%)
-- **Voisinage optimal:** inter_relocate
-
----
-
-## 11. PIÈGES IDENTIFIÉS
-
-❌ **Tabu devient extrêmement lent** sur data1101 (1100+ clients) → Raison : Tenure=40 avec 1100 clients = exploration massive
-
-❌ **SA plateau rapidement** après 30k itérations → Raison : Refroidissement trop agressif (cooling=0.9993)?
-
-⚠️ **Fenêtres de temps changent drastiquement** le problème → 55% aug. distance!
-
----
-
-## 12. PROCHAINES ÉTAPES (OPTIONNEL)
-
-Si vous aviez plus de temps:
-
-1. **Analyser Tabu sur data1101:** Les 2 runs data201 ne suffisent pas. Compiler data1101 (1100+ clients) avec tenure plus agressif.
-
-2. **Tester tenure variable:** Tenure=40 convient à data101, mais peut être sous-optimal pour data111+
-
-3. **Affiner cooling rate SA:** cooling=0.9993 peut être trop conservateur. Tester 0.999 ou 0.99
-
-4. **Augmenter itérations SA:** 100k itérations n'ont pas montré plateau évident. Tester 200k-500k.
-
----
-
-## CONCLUSION
-
-**Recommandation finale:** 
-- **Pour le rapport:** Présentez Tabu comme gagnant qualité (+12%), mais mentionnez le tradeoff temps massif (8600×).
-- **Pour la production:** Recommandez SA (rapide) pour temps-réel, Tabu (offline) pour haute qualité.
-- **Voisinage:** inter-relocate est **OBLIGATOIRE** dans la configuration finale.
-- **Fenêtres de temps:** Augmentent drastiquement la difficulté; Tabu gère mieux.
-
----
-
-**Generated:** 2026-04-28  
-**Analysis Complete:** ✓
+✓ 106 runs WITH time windows  
+✓ 3 instances (data101, data111, data201)  
+✓ 2 algorithmes (SA, TABU)  
+✓ Convergence analysis (10k, 30k, 100k itérations)

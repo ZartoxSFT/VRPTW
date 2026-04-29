@@ -62,8 +62,8 @@ if (-not (Test-Path (Join-Path $ClassPath "vrptw/Main.class"))) {
     throw "Cannot find compiled classes in '$ClassPath'. Compile first (example: javac --release 21 -d bin src/vrptw/*.java)."
 }
 
-# Targeted 60-run campaign:
-# 3 instances x 5 seeds x 2 TW modes x 2 algos = 60
+# Targeted campaign: SA ONLY (for quick testing)
+# 3 instances x 5 seeds x 2 TW modes x 1 algo (SA) = 30 runs
 $instances = @(
     "data/data101.vrp", # small/reference
     "data/data111.vrp", # medium
@@ -71,7 +71,7 @@ $instances = @(
 )
 $seeds = @(41, 42, 43, 44, 45)
 $twModes = @("non", "oui")
-$algos = @("sa", "tabu")
+$algos = @("sa")
 
 # Fixed best observed parameters from previous analysis.
 $saInitialTemp = 1250.0

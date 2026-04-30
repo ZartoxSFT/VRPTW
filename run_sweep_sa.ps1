@@ -1,5 +1,5 @@
 param(
-    [int]$MaxRuns = 500,    # Limiter à 500 runs (sinon peut faire 1000+)
+    [int]$MaxRuns = 500,
     [string]$ClassPath = "bin"
 )
 
@@ -50,62 +50,60 @@ if (-not (Test-Path (Join-Path $ClassPath "vrptw/Main.class"))) {
 }
 
 # === PARAMETER SWEEP FOR SA ===
-# Goal: Find optimal PenaltyWeight, InitialTemp, CoolingRate, Iterations
+# Goal: Find the best natural feasible solution for SA with TW enabled only.
 
 $instance = "data/data101.vrp"
 $tw = "oui"
 
-# Parameter ranges
-$penaltyWeights = @(1000, 5000, 10000, 50000, 100000, 500000)  # 6 levels
-$initialTemps = @(500, 1000, 1250, 1500, 2000)                  # 5 levels
-$coolingRates = @(0.998, 0.9993, 0.9995, 0.999)                 # 4 levels
-$iterations = @(50000, 100000)                                   # 2 levels
-$seeds = @(101, 102, 103)                                        # 3 seeds
+# Exploratory ranges: keep the search natural, do not target a specific vehicle count.
+$penaltyWeights = @(250, 500, 1000, 2500, 5000, 10000, 50000)     # 7 levels
+$initialTemps = @(250, 400, 500, 750, 1000, 1250, 1500, 2000)     # 8 levels
+$coolingRates = @(0.995, 0.9975, 0.998, 0.999, 0.9993, 0.9995)    # 6 levels
+$iterations = @(30000, 50000, 100000, 150000)                     # 4 levels
+$seeds = @(101, 102, 103, 104, 105)                               # 5 seeds
 
-# Generate full factorial design
-$planRows = @()
-$runCount = 0
-
+# Generate the full factorial design, then sample it if MaxRuns is lower.
+$allRows = @()
 foreach ($penalty in $penaltyWeights) {
     foreach ($temp in $initialTemps) {
         foreach ($cooling in $coolingRates) {
             foreach ($iter in $iterations) {
                 foreach ($seed in $seeds) {
-                    if ($runCount -ge $MaxRuns) { break }
-                    
-                    $planRows += [pscustomobject]@{
+                    $allRows += [pscustomobject]@{
                         penalty = $penalty
                         temp = $temp
                         cooling = $cooling
                         iterations = $iter
                         seed = $seed
                     }
-                    $runCount++
                 }
-                if ($runCount -ge $MaxRuns) { break }
             }
-            if ($runCount -ge $MaxRuns) { break }
         }
-        if ($runCount -ge $MaxRuns) { break }
     }
-    if ($runCount -ge $MaxRuns) { break }
 }
 
+$planRows = $allRows | Get-Random -Count ([math]::Min($MaxRuns, $allRows.Count))
+$runCount = $planRows.Count
+
 $total = $planRows.Count
+$designTotal = $allRows.Count
 
 Write-Host ""
 Write-Host "========================================================================"
-Write-Host "SA PARAMETER SWEEP - Seeking 1650.80 km optimum"
+Write-Host "SA PARAMETER SWEEP - Natural TW-feasible search"
 Write-Host "========================================================================"
 Write-Host "Total runs planned: $total"
+Write-Host "Total design combinations: $designTotal"
 Write-Host "PenaltyWeights: $($penaltyWeights.Count) levels"
 Write-Host "InitialTemps:   $($initialTemps.Count) levels"
 Write-Host "CoolingRates:   $($coolingRates.Count) levels"
 Write-Host "Iterations:     $($iterations.Count) levels"
 Write-Host "Seeds:          $($seeds.Count) seeds"
 Write-Host ""
-Write-Host "Design: $($penaltyWeights.Count) × $($initialTemps.Count) × $($coolingRates.Count) × $($iterations.Count) × $($seeds.Count) = $total combinations"
+Write-Host "Design: $($penaltyWeights.Count) × $($initialTemps.Count) × $($coolingRates.Count) × $($iterations.Count) × $($seeds.Count) = $designTotal combinations"
+Write-Host "Sampled: $total combinations (MaxRuns=$MaxRuns)"
 Write-Host "Est. time: $([math]::Ceiling($total * 0.2)) minutes"
+Write-Host "Note: all runs keep enforce_time_windows = oui and max_vehicles unrestricted"
 Write-Host "========================================================================"
 Write-Host ""
 
